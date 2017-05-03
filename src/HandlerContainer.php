@@ -7,7 +7,7 @@ use Circuit\Interfaces\Delegate;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class HandlerContainer extends Delegate
+class HandlerContainer implements Delegate
 {
     /** @var string */    
     public $route;
@@ -24,7 +24,7 @@ class HandlerContainer extends Delegate
     public function __construct($handler, array $stack = [])
     {
         $this->handler = $handler;
-        $this->middlewareStack = $stack;
+        $this->middlewareStack = array_merge([null], $stack);
     }
     
     /**

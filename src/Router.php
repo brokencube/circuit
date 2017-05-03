@@ -19,8 +19,7 @@ class Router
             'routeCollector' => 'Circuit\\RouteCollector',
             'errorRoutes' => [
                 '404' => ['Circuit\\Router', 'default404router']
-            ],
-            'prependControllerNamespace' => ''
+            ]
         ];
         
         $this->router = new $this->options['routeCollector'](
@@ -57,7 +56,7 @@ class Router
             
             case Dispatcher::FOUND:
                 // $response will be of type HandlerContainer
-                $response = $dispatch[0]->process($request);
+                $response = $dispatch[1]->process($request);
                 break;
         }
         
