@@ -12,11 +12,15 @@ class Router
     
     public function __construct(array $options = [])
     {
-        $this->options += [
+        $this->options = $options + [
             'routeParser' => 'FastRoute\\RouteParser\\Std',
             'dataGenerator' => 'FastRoute\\DataGenerator\\GroupCountBased',
             'dispatcher' => 'FastRoute\\Dispatcher\\GroupCountBased',
             'routeCollector' => 'FastRoute\\RouteCollector',
+            'errorRoutes' => [
+                '404' => ['Circuit\\Router', 'default404router']
+            ],
+            'prependControllerNamespace' => ''
         ];
         
         $this->router = new $this->options['routeCollector'](
@@ -32,19 +36,16 @@ class Router
     
     public function run(Request $request)
     {
-        $dispatch = $this->dispatcher->dispatch($request->server->get('REQUEST_METHOD'), $request->server->get('REQUEST_URI'));
+        list($uri) = explode('?', str_replace(chr(0), '', $request->server->get('REQUEST_URI')));
+        
+        $dispatch = $this->dispatcher->dispatch($request->server->get('REQUEST_METHOD'), $uri);
         switch ($dispatch[0]) {
             case Dispatcher::NOT_FOUND:
-                $content = '404';
+                $response = $this->options['errorRoutes']['404']($request);
                 
-                $response = new Response(
-                    $content,
-                    Response::HTTP_NOT_FOUND,
-                    array('content-type' => 'text/html')
-                );
                 break;
             case Dispatcher::METHOD_NOT_ALLOWED:
-                $allowedMethods = $routeInfo[1];
+                $allowedMethods = $dispatch[1];
                 $content = '405';
 
                 $response = new Response(
@@ -54,24 +55,53 @@ class Router
                 );
                 break;
             case Dispatcher::FOUND:
-                $handler = $routeInfo[1];
-                $vars = $routeInfo[2];
-                $content = '200';
-                
-                $response = new Response(
-                    $content,
-                    Response::HTTP_OK,
-                    array('content-type' => 'text/html')
-                );
+                $response = $this->dispatchController($request, $dispatch);
                 break;
         }
         
         $response->prepare($request);
         $response->send();
+        exit;
     }
     
-    public function default404route()
+    protected function dispatchController(Request $request, $route)
     {
-        header();
+        list (,$controller,$args) = $route;
+        
+        if (is_callable($controller)) {
+            $response = $controller($request, ...$args);
+        } elseif (is_string($controller)) {
+            list($class, $function) = explode('@', $controller);
+            if (!$function) {
+                $function = 'index';
+            }
+            
+            // Check whether this is an absolute namespace name
+            if (substr($class,0,1) == '\\') {
+                $class = trim($class, ' \t\n\r\0\x0B\\');
+            } else {
+                if ($pre = trim($this->options['prependControllerNamespace'], ' \t\n\r\0\x0B\\')) {
+                    $class = $pre . '\\' . $class;
+                }
+            }
+            
+            $c = new $class;
+            $response = $c->$function($request, ...$args);
+        }
+        
+        return new Response(
+            $response,
+            Response::HTTP_OK,
+            array('content-type' => 'text/html')
+        );
+    }
+    
+    public function default404router()
+    {
+        return new Response(
+            '404 Not Found',
+            Response::HTTP_NOT_FOUND,
+            ['content-type' => 'text/html']
+        );
     }
 }
