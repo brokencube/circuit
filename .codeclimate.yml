@@ -1,0 +1,40 @@
+engines:
+  duplication:
+    enabled: true
+    config:
+      languages:
+      - php:
+  phpmd:
+    enabled: true
+    checks:
+      Design/TooManyPublicMethods:
+        enabled: false
+      Design/TooManyMethods:
+        enabled: false
+      Design/WeightedMethodCount:
+        enabled: false
+      CleanCode/ElseExpression:
+        enabled: false
+      CleanCode/BooleanArgumentFlag:
+        enabled: false
+      CleanCode/StaticAccess:
+        enabled: false
+  phpcodesniffer:
+    enabled: true
+  phan:
+    enabled: true
+    config:
+      file_extensions: "php"
+    checks:
+      PhanUndeclaredInterface:
+        enabled: false
+      PhanUndeclaredClassMethod:
+        enabled: false
+      PhanUndeclaredTrait:
+        enabled: false
+ratings:
+  paths:
+  - src/**
+exclude_paths:
+- test/*
+- "**/vendor/**/*"
