@@ -1,0 +1,24 @@
+{
+    "name": "brokencube/circuit",
+    "description": "Microframework - controller+dispatcher",
+    "type": "library",
+    "keywords": ["MVC", "Dispatcher", "Controller"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Nik Barham",
+            "email": "nik@automatorm.com",
+            "homepage": "http://www.automatorm.com",
+            "role": "Lead Developer"
+        }    
+    ],
+    "require": {
+        "php": ">=7.0",
+        "psr/log": "^1.0"
+        "nikic/fast-route": "^1.2",
+        "symfony/http-foundation": "^3.2"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^5.0"
+    }
+}
