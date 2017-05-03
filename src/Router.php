@@ -1,6 +1,6 @@
 <?php
 
-namespace brokencube\Circuit;
+namespace Circuit;
 
 use FastRoute\Dispatcher;
 use Symfony\Component\HttpFoundation\Request;
