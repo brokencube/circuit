@@ -8,29 +8,84 @@ use Symfony\Component\HttpFoundation\Response;
 
 class Router
 {
+    const CACHE_KEY = 'routes_v1';
     protected $options = [];
+    protected $routeCollection;
+    protected $dispatcher;
+    protected $cache;
     
-    public function __construct(array $options = [])
+    public function __construct(array $options = [], $cache = null)
     {
         $this->options = $options + [
             'routeParser' => 'FastRoute\\RouteParser\\Std',
             'dataGenerator' => 'FastRoute\\DataGenerator\\GroupCountBased',
             'dispatcher' => 'FastRoute\\Dispatcher\\GroupCountBased',
             'routeCollector' => 'Circuit\\RouteCollector',
+            'cacheTimeout' => 3600,
             'errorRoutes' => [
                 '404' => ['Circuit\\Router', 'default404router']
             ]
         ];
+        $this->cache = $cache;
         
-        $this->router = new $this->options['routeCollector'](
-            new $this->options['routeParser'], new $this->options['dataGenerator']
-        );
+        // PSR-16 Cache
+        if ($this->cache instanceof Psr\SimpleCache\CacheInterface) {
+            $this->routeCollection = $this->cache->get(static::CACHE_KEY);
+        }
+
+        // PSR-6 Cache
+        if ($this->cache instanceof Psr\Cache\CachePoolInterface) {
+            $item = $this->cache->getItem(static::CACHE_KEY);
+            if ($item->isHit()) {
+                $this->routeCollection = $item->get();
+            }
+        }
+        
+        if ($this->routeCollection) {
+            $this->cached = true;
+        } else {
+            $this->routeCollection = new $this->options['routeCollector'](
+                new $this->options['routeParser'], new $this->options['dataGenerator']
+            );
+        }
     }
     
     public function defineRoutes(callable $routeDefinitionCallback)
     {
-        $routeDefinitionCallback($this->router);
-        $this->dispatcher = new $this->options['dispatcher']($this->router->getData());
+        if (!$this->cached) {
+            $routeDefinitionCallback($this->routeCollection);
+            // PSR-16 Cache
+            if ($this->cache instanceof Psr\SimpleCache\CacheInterface) {
+                $this->cache->set(static::CACHE_KEY, $this->routeCollection, $this->options['cacheTimeout']);
+            }
+
+            // PSR-6 Cache
+            if ($this->cache instanceof Psr\Cache\CachePoolInterface) {
+                $item = $this->cache->getItem(static::CACHE_KEY);
+                $item->set($this->routeCollection);
+                $item->expiresAt(new \DateTime('now + ' . $this->options['cacheTimeout'] . 'seconds'));
+                $this->cache->save($item);
+            }
+        }
+        
+        $this->dispatcher = new $this->options['dispatcher']($this->routeCollection->getData());
+    }
+    
+    protected function getCachedValue($key)
+    {
+        if (!$this->cache) return null;
+        
+        if ($this->cache instanceof Psr\SimpleCache\CacheInterface) {
+            return $this->cache->get($key);
+        }
+
+        if ($this->cache instanceof Psr\Cache\CachePoolInterface) {
+            $item = $this->cache->getItem($key);
+            if (!$item->isHit()) {
+                return null;
+            }
+            return $item->get();
+        }
     }
     
     public function run(Request $request)
@@ -46,7 +101,7 @@ class Router
             case Dispatcher::METHOD_NOT_ALLOWED:
                 $allowedMethods = $dispatch[1];
                 $content = '405';
-            
+                
                 $response = new Response(
                     $content,
                     Response::HTTP_METHOD_NOT_ALLOWED,
@@ -56,7 +111,9 @@ class Router
             
             case Dispatcher::FOUND:
                 // $response will be of type HandlerContainer
-                $response = $dispatch[1]->process($request);
+                $dispatcher = unserialize($dispatch[1]);
+                
+                $response = $dispatcher->process($request);
                 break;
         }
         

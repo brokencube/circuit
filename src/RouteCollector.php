@@ -53,6 +53,8 @@ class RouteCollector
             $handler->addMiddleware(array_merge($this->currentMiddlewareStack, $middleware));
         }
         
+        $handler = serialize($handler);
+        
         $route = $this->currentGroupPrefix . $route;
         $routeDatas = $this->routeParser->parse($route);
         foreach ((array) $httpMethod as $method) {
