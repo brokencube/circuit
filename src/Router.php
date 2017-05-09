@@ -25,7 +25,8 @@ class Router
             'routeCollector' => 'Circuit\\RouteCollector',
             'cacheTimeout' => 3600,
             'errorRoutes' => [
-                '404' => ['Circuit\\Router', 'default404router']
+                '404' => ['Circuit\\Router', 'default404route'],
+                '405' => ['Circuit\\Router', 'default405route']
             ]
         ];
         $this->cache = $cache;
@@ -75,12 +76,14 @@ class Router
     
     protected function getCachedValue($key)
     {
-        if (!$this->cache) return null;
+        if (!$this->cache) {
+            return null;
+        }
         
         if ($this->cache instanceof Psr\SimpleCache\CacheInterface) {
             return $this->cache->get($key);
         }
-
+        
         if ($this->cache instanceof Psr\Cache\CachePoolInterface) {
             $item = $this->cache->getItem($key);
             if (!$item->isHit()) {
@@ -101,14 +104,7 @@ class Router
                 break;
             
             case Dispatcher::METHOD_NOT_ALLOWED:
-                $allowedMethods = $dispatch[1];
-                $content = '405';
-                
-                $response = new Response(
-                    $content,
-                    Response::HTTP_METHOD_NOT_ALLOWED,
-                    array('content-type' => 'text/html')
-                );
+                $response = $this->options['errorRoutes']['405']($request);
                 break;
             
             case Dispatcher::FOUND:
@@ -121,14 +117,22 @@ class Router
         
         $response->prepare($request);
         $response->send();
-        exit;
     }
     
-    public function default404router() : Response
+    public function default404route() : Response
     {
         return new Response(
             '404 Not Found',
             Response::HTTP_NOT_FOUND,
+            ['content-type' => 'text/html']
+        );
+    }
+    
+    public function default405route() : Response
+    {
+        return new Response(
+            '405 Method Not Allowed',
+            Response::METHOD_NOT_ALLOWED,
             ['content-type' => 'text/html']
         );
     }

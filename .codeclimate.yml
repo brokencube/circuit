@@ -32,6 +32,8 @@ engines:
         enabled: false
       PhanUndeclaredTrait:
         enabled: false
+      PhanUndeclaredTypeParameter:
+        enabled: false        
 ratings:
   paths:
   - src/**

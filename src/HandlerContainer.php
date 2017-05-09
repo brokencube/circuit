@@ -9,11 +9,14 @@ use Symfony\Component\HttpFoundation\Response;
 
 class HandlerContainer implements Delegate
 {
-    /** @var string */    
+    /** @var string */
     public $route;
     
-    /** @var Middleware[] */
+    /** @var Middleware|null[] */
     public $middlewareStack = [null];
+    
+    /** @var mixed */
+    public $handler;
     
     /**
      * Store a handler against a list of middleware
@@ -24,7 +27,7 @@ class HandlerContainer implements Delegate
     public function __construct($handler, array $stack = [])
     {
         $this->handler = $handler;
-        $this->middlewareStack = array_merge([null], $stack);
+        $this->addMiddleware($stack);
     }
     
     /**
@@ -65,7 +68,7 @@ class HandlerContainer implements Delegate
         }
         
         if ($return instanceof Response) {
-            return $response;
+            return $return;
         }
         
         return new Response(
