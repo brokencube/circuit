@@ -5,6 +5,8 @@ namespace Circuit;
 use FastRoute\Dispatcher;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Psr\SimpleCache\CacheInterface as Psr16;
+use Psr\Cache\CacheItemPoolInterface as Psr6;
 
 class Router
 {
@@ -29,12 +31,12 @@ class Router
         $this->cache = $cache;
         
         // PSR-16 Cache
-        if ($this->cache instanceof Psr\SimpleCache\CacheInterface) {
+        if ($this->cache instanceof Psr16) {
             $this->routeCollection = $this->cache->get(static::CACHE_KEY);
         }
 
         // PSR-6 Cache
-        if ($this->cache instanceof Psr\Cache\CachePoolInterface) {
+        if ($this->cache instanceof Psr6) {
             $item = $this->cache->getItem(static::CACHE_KEY);
             if ($item->isHit()) {
                 $this->routeCollection = $item->get();
@@ -55,12 +57,12 @@ class Router
         if (!$this->cached) {
             $routeDefinitionCallback($this->routeCollection);
             // PSR-16 Cache
-            if ($this->cache instanceof Psr\SimpleCache\CacheInterface) {
+            if ($this->cache instanceof Psr16) {
                 $this->cache->set(static::CACHE_KEY, $this->routeCollection, $this->options['cacheTimeout']);
             }
 
             // PSR-6 Cache
-            if ($this->cache instanceof Psr\Cache\CachePoolInterface) {
+            if ($this->cache instanceof Psr6) {
                 $item = $this->cache->getItem(static::CACHE_KEY);
                 $item->set($this->routeCollection);
                 $item->expiresAt(new \DateTime('now + ' . $this->options['cacheTimeout'] . 'seconds'));
