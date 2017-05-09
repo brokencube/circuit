@@ -15,6 +15,9 @@ class Router
     protected $routeCollection;
     protected $dispatcher;
     protected $cache;
+
+    /** @var mixed[] */
+    protected $controllerArguments = [];
     
     public function __construct(array $options = [], $cache = null)
     {
@@ -111,6 +114,7 @@ class Router
                 // $response will be of type HandlerContainer
                 $dispatcher = unserialize($dispatch[1]);
                 
+                $dispatcher->setControllerDependancies(...$this->controllerArguments);
                 $response = $dispatcher->process($request);
                 break;
         }
@@ -135,5 +139,10 @@ class Router
             Response::METHOD_NOT_ALLOWED,
             ['content-type' => 'text/html']
         );
+    }
+
+    public function setControllerDependancies(...$args)
+    {
+        $this->controllerArguments = $args;
     }
 }

@@ -9,14 +9,14 @@ use Symfony\Component\HttpFoundation\Response;
 
 class HandlerContainer implements Delegate
 {
-    /** @var string */
-    public $route;
-    
     /** @var Middleware|null[] */
     public $middlewareStack = [null];
     
     /** @var mixed */
     public $handler;
+    
+    /** @var mixed[] */
+    protected $controllerArguments = [];
     
     /**
      * Store a handler against a list of middleware
@@ -63,7 +63,7 @@ class HandlerContainer implements Delegate
             // Trim class/namespace
             $class = trim($class, ' \t\n\r\0\x0B\\');
             
-            $c = new $class;
+            $c = new $class(...$this->controllerArguments);
             $return = $c->$function($request, ...$args);
         }
         
@@ -76,5 +76,15 @@ class HandlerContainer implements Delegate
             Response::HTTP_OK,
             array('content-type' => 'text/html')
         );        
+    }
+    
+    public function setControllerDependancies(...$args)
+    {
+        $this->controllerArguments = $args;
+    }
+    
+    public function __sleep()
+    {
+        return ['handler', 'middlewareStack'];
     }
 }
