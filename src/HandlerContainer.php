@@ -78,7 +78,7 @@ class HandlerContainer implements Delegate
         );        
     }
     
-    public function setControllerDependancies(...$args)
+    public function setControllerArguments(...$args)
     {
         $this->controllerArguments = $args;
     }

@@ -114,7 +114,7 @@ class Router
                 // $response will be of type HandlerContainer
                 $dispatcher = unserialize($dispatch[1]);
                 
-                $dispatcher->setControllerDependancies(...$this->controllerArguments);
+                $dispatcher->setControllerArguments(...$this->controllerArguments);
                 $response = $dispatcher->process($request);
                 break;
         }
@@ -141,7 +141,7 @@ class Router
         );
     }
 
-    public function setControllerDependancies(...$args)
+    public function setControllerArguments(...$args)
     {
         $this->controllerArguments = $args;
     }
