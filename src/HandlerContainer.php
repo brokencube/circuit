@@ -57,7 +57,7 @@ class HandlerContainer implements Delegate
                 $function = 'index';
             }
             
-            // Check whether this is an absolute namespace name
+            // Trim class/namespace
             $class = trim($class, ' \t\n\r\0\x0B\\');
             
             $c = new $class;
