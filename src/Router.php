@@ -2,6 +2,7 @@
 
 namespace Circuit;
 
+use Circuit\Interfaces\Middleware;
 use FastRoute\Dispatcher;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,7 +19,10 @@ class Router
 
     /** @var mixed[] */
     protected $controllerArguments = [];
-    
+
+    /** @var Middleware[] */
+    protected $middleware = [];
+
     public function __construct(array $options = [], $cache = null)
     {
         $this->options = $options + [
@@ -115,7 +119,7 @@ class Router
                 $dispatcher = unserialize($dispatch[1]);
                 
                 $dispatcher->setControllerArguments(...$this->controllerArguments);
-                $response = $dispatcher->process($request);
+                $response = $dispatcher->startProcessing($this, $request);
                 break;
         }
         
@@ -144,5 +148,18 @@ class Router
     public function setControllerArguments(...$args)
     {
         $this->controllerArguments = $args;
+    }
+    
+    public function registerMiddleware($name, Middleware $middleware)
+    {
+        $this->middleware[$name] = $middleware;
+    }
+    
+    public function getMiddleware($name) : Middleware
+    {
+        if (!array_key_exists($name, $this->middleware)) {
+            throw new \Exception("No middleware registered under name '{$name}'");
+        }
+        return $this->middleware[$name];
     }
 }

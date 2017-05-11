@@ -18,6 +18,9 @@ class HandlerContainer implements Delegate
     /** @var mixed[] */
     protected $controllerArguments = [];
     
+    /** @var Circuit\Router */
+    protected $router;
+    
     /**
      * Store a handler against a list of middleware
      *
@@ -39,12 +42,24 @@ class HandlerContainer implements Delegate
     {
         $this->middlewareStack = array_merge($this->middlewareStack, $stack);
     }
+
+    /**
+     * Set the router about to call this handler
+     */
+    public function startProcessing(Router $router, Request $request) : Response
+    {
+        $this->router = $router;
+        return $this->process($request);
+    }
     
     public function process(Request $request) : Response
     {
         $next = next($this->middlewareStack);
-        if ($next !== false) {
+        if ($next instanceof Middleware) {
             return $next->process($request, $this);
+        }
+        elseif (is_string($next)) {
+            return $this->router->getMiddleware($next)->process($request, $this);
         } else {
             return $this->dispatchController($request);
         }
