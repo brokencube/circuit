@@ -16,6 +16,7 @@ class Router
     protected $routeCollection;
     protected $dispatcher;
     protected $cache;
+    protected $cached = false;
 
     /** @var mixed[] */
     protected $controllerArguments = [];
