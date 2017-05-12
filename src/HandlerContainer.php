@@ -25,7 +25,7 @@ class HandlerContainer implements Delegate
     /**
      * Store a handler against a list of middleware
      *
-     * @param mixed  $handler
+     * @param mixed $handler
      * @param Middleware[] $middleware
      */
     public function __construct($handler, array $stack = [])
@@ -55,8 +55,9 @@ class HandlerContainer implements Delegate
     {
         $this->router = $router;
         $request->attributes->set('args', $args);
-        $request->attributes->set('controllerClass', $this->controllerClass);
-        $request->attributes->set('controllerMethod', $this->controllerMethod);
+        $request->attributes->set('class', $this->controllerClass);
+        $request->attributes->set('method', $this->controllerMethod);
+        $request->attributes->set('constructor', $this->router->controllerArguments);
         return $this->process($request);
     }
     
@@ -69,8 +70,9 @@ class HandlerContainer implements Delegate
             return $this->router->getMiddleware($next)->process($request, $this);
         } else {
             $args = $request->attributes->get('args');
+            $constructerArgs = $request->attributes->get('constructor');
             // Call controller with request and args
-            $return = (new $this->controllerClass)->{$this->controllerFunction}($request, ...$args);
+            $return = (new $this->controllerClass(...$constructerArgs))->{$this->controllerMethod}($request, ...$args);
             
             if ($return instanceof Response) {
                 return $return;
@@ -86,6 +88,6 @@ class HandlerContainer implements Delegate
     
     public function __sleep()
     {
-        return ['handler', 'middlewareStack'];
+        return ['controllerClass', 'middlewareStack', 'controllerMethod'];
     }
 }

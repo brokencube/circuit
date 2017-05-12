@@ -20,7 +20,7 @@ class Router
     protected $cached = false;
 
     /** @var mixed[] */
-    protected $controllerArguments = [];
+    public $controllerArguments = [];
 
     /** @var Middleware[] */
     protected $middleware = [];

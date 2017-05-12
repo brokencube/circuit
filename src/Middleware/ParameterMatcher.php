@@ -3,6 +3,7 @@
 namespace Circuit\Middleware;
 
 use Circuit\Interfaces\Middleware;
+use Circuit\Interfaces\Delegate;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -10,8 +11,8 @@ class ParameterMatcher implements Middleware
 {
     public function process(Request $request, Delegate $delegate) : Response
     {
-        $controller = $request->attributes->get('controllerClass');
-        $method = $request->attributes->get('controllerMethod');
+        $controller = $request->attributes->get('class');
+        $method = $request->attributes->get('method');
         $args = $request->attributes->get('args');
         
         $parameters = (new \ReflectionClass($controller))->getMethod($method)->getParameters();
