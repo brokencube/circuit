@@ -3,6 +3,7 @@
 namespace Circuit;
 
 use Circuit\Interfaces\Middleware;
+use Circuit\Interfaces\ParameterDereferencer;
 use FastRoute\Dispatcher;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,6 +24,9 @@ class Router
 
     /** @var Middleware[] */
     protected $middleware = [];
+
+    /** @var Circuit\Interfaces\ParameterDereferencer */
+    public $parameterDereferencer;
 
     public function __construct(array $options = [], $cache = null)
     {
@@ -120,7 +124,7 @@ class Router
                 $dispatcher = unserialize($dispatch[1]);
                 
                 $dispatcher->setControllerArguments(...$this->controllerArguments);
-                $response = $dispatcher->startProcessing($this, $request);
+                $response = $dispatcher->startProcessing($this, $request, $dispatch[2]);
                 break;
         }
         
@@ -128,7 +132,7 @@ class Router
         $response->send();
     }
     
-    public function default404route() : Response
+    public function default404route(Request $request) : Response
     {
         return new Response(
             '404 Not Found',
@@ -137,7 +141,7 @@ class Router
         );
     }
     
-    public function default405route() : Response
+    public function default405route(Request $request) : Response
     {
         return new Response(
             '405 Method Not Allowed',
@@ -162,5 +166,11 @@ class Router
             throw new \Exception("No middleware registered under name '{$name}'");
         }
         return $this->middleware[$name];
+    }
+
+    public function registerParameterDereferencer(ParameterDereferencer $passthru)
+    {
+        $this->parameterDereferencer = $passthru;
+        return $this;
     }
 }
