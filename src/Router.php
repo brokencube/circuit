@@ -25,9 +25,6 @@ class Router
     /** @var Middleware[] */
     protected $middleware = [];
 
-    /** @var Circuit\Interfaces\ParameterDereferencer */
-    public $parameterDereferencer;
-
     public function __construct(array $options = [], $cache = null)
     {
         $this->options = $options + [
@@ -120,10 +117,7 @@ class Router
                 break;
             
             case Dispatcher::FOUND:
-                // $response will be of type HandlerContainer
                 $dispatcher = unserialize($dispatch[1]);
-                
-                $dispatcher->setControllerArguments(...$this->controllerArguments);
                 $response = $dispatcher->startProcessing($this, $request, $dispatch[2]);
                 break;
         }
@@ -166,11 +160,5 @@ class Router
             throw new \Exception("No middleware registered under name '{$name}'");
         }
         return $this->middleware[$name];
-    }
-
-    public function registerParameterDereferencer(ParameterDereferencer $passthru)
-    {
-        $this->parameterDereferencer = $passthru;
-        return $this;
     }
 }
