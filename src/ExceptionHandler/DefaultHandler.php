@@ -11,7 +11,7 @@ class DefaultHandler implements ExceptionHandler
     function handle(HttpException $e, Request $request, $context) : Response
     {
         return new Response(
-            Response::$statusTexts[$e->getStatusCode()],
+            $e->getStatusCode() . ' ' . Response::$statusTexts[$e->getStatusCode()],
             $e->getStatusCode(),
             ['content-type' => 'text/html']
         );
