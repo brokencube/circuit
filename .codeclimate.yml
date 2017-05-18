@@ -25,17 +25,7 @@ engines:
     enabled: true
     config:
       file_extensions: "php"
-    checks:
-      PhanUndeclaredInterface:
-        enabled: false
-      PhanUndeclaredClassMethod:
-        enabled: false
-      PhanUndeclaredTrait:
-        enabled: false
-      PhanUndeclaredTypeParameter:
-        enabled: false
-      PhanUndeclaredClassInstanceof:
-        enabled: false
+    ignore-undeclared: true
 ratings:
   paths:
   - src/**

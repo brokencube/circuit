@@ -96,7 +96,7 @@ class HandlerContainer implements Delegate
                 $return,
                 Response::HTTP_OK,
                 array('content-type' => 'text/html')
-            );        
+            );
         }
     }
 
