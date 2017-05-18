@@ -15,25 +15,39 @@ use Symfony\Component\HttpKernel\Exception as Http;
 
 class Router implements Delegate
 {
-    const CACHE_KEY = 'routes_v1';
+    const CACHE_KEY = 'routes_v2';
+    
     protected $options = [];
     protected $routeCollection;
     protected $dispatcher;
+    
+    /** @var Psr\SimpleCache\CacheInterface|Psr\Cache\CacheItemPoolInterface
+        PSR6/16 compatible cache item
+      */
     protected $cache;
+
+    /** @var bool Did we pull results from cache i.e. do we need to call the RouteCollector callback */
     protected $cached = false;
 
-    /** @var ExceptionHandler[] */
+    /** @var ExceptionHandler[] List of exception handlers for particular HTTP codes */
     public $exceptionHandlers = [];
 
-    /** @var mixed[] */
+    /** @var mixed[] List of arguments passed to Controller constructor */
     public $controllerArguments = [];
 
-    /** @var Middleware[] */
+    /** @var Middleware[] List of registered middlewares on this router */
     protected $middleware = [];
     
-    /** @var mixed[] */
+    /** @var mixed[] List of middlewares to run before matching routes */
     protected $preRouteMiddlewareStack = [null];
 
+    /**
+     * Create a new Router
+     * See https://github.com/nikic/FastRoute for more details
+     *
+     * @param array $options Option overrides
+     * @param Psr\SimpleCache\CacheInterface|Psr\Cache\CacheItemPoolInterface $cache A PSR-6 or PSR-16 compatible Cache object
+     */
     public function __construct(array $options = [], $cache = null)
     {
         $this->options = $options + [
@@ -68,6 +82,13 @@ class Router implements Delegate
         }
     }
     
+    /**
+     * Define routes using a routerCollector
+     * See https://github.com/nikic/FastRoute for more details
+     *
+     * @param callable $routeDefinitionCallback Callback that will define the routes
+     * @return self
+     */
     public function defineRoutes(callable $routeDefinitionCallback)
     {
         if (!$this->cached) {
@@ -87,8 +108,15 @@ class Router implements Delegate
         }
         
         $this->dispatcher = new $this->options['dispatcher']($this->routeCollection->getData());
+        return $this;
     }
     
+    /**
+     * Internal function to retrieve a cached value from PSR-6/16 cache object
+     *
+     * @param string $key Cache key to retrieve from cache
+     * @return self
+     */
     protected function getCachedValue($key)
     {
         if (!$this->cache) {
@@ -108,6 +136,11 @@ class Router implements Delegate
         }
     }
     
+    /**
+     * Execute a route
+     *
+     * @param Request $request Request object for current process
+     */
     public function run(Request $request)
     {
         $response = $this->process($request);
@@ -115,6 +148,13 @@ class Router implements Delegate
         $response->send();
     }
     
+    /**
+     * Process a route
+     * Will call pre-route middleware, then match route and execute that route (more middleware + controller)
+     *
+     * @param Request $request Request object for current process
+     * @return Response Response to http request ready for dispatch 
+     */
     public function process(Request $request) : Response
     {
         try {
@@ -150,7 +190,17 @@ class Router implements Delegate
         }
     }
     
-    public function handleException(\Throwable $e, Request $request, $currentContext = null) : Response
+    /**
+     * Handle an exception during processing of route.
+     * Will try and determine context (Controller, Middleware, Router etc) before calling ExceptionHandler
+     * based on HTTP code of Exception (default 500).
+     *
+     * @param Throwable $e The Exception / Error thrown.
+     * @param Request $request The request that caused the exception.
+     * @param mixed $currentContext Some data to try and guess the context from.
+     * @return Response The response to the exception (e.g. error page)
+     */    
+    protected function handleException(\Throwable $e, Request $request, $currentContext = null) : Response
     {
         // Figure out which Middleware/Controller we're in
         if ($currentContext instanceof Middleware) {
@@ -185,31 +235,69 @@ class Router implements Delegate
         }
     }
     
+    /**
+     * Set arguments that will be passed to the constructor for any controllers invoked
+     *
+     * @param mixed $args Array containing all passed variadic arguments
+     * @return self
+     */
     public function setControllerArguments(...$args)
     {
         $this->controllerArguments = $args;
+        return $this;
     }
 
+    /**
+     * Register a middleware against a name.
+     * This allows middleware to be created on startup and then refered to in serialised/cached route table
+     *
+     * @param string $name Unique name for middleware instance
+     * @param Middleware $middleware Middleware object
+     * @return self
+     */
     public function registerMiddleware($name, Middleware $middleware)
     {
         $this->middleware[$name] = $middleware;
+        return $self;
     }
    
+    /**
+     * Retrieve a middleware by name.
+     *
+     * @param string $name Name of middleware set by ->registerMiddleware($name)
+     * @throws UnexpectedValueException For unrecognised names
+     * @return Middleware The referenced middleware instance
+     */
     public function getMiddleware($name) : Middleware
     {
         if (!array_key_exists($name, $this->middleware)) {
-            throw new \Exception("No middleware registered under name '{$name}'");
+            throw new \UnexpectedValueException("No middleware registered under name '{$name}'");
         }
         return $this->middleware[$name];
     }
     
+    /**
+     * Register an exception handler for a particular HTTP code.
+     *
+     * @param string $code HTTP code handler is responsible for
+     * @param ExceptionHandler $hander Handler
+     * @return self
+     */
     public function setExceptionHandler($code, ExceptionHandler $handler)
     {
         $this->exceptionHandlers[$code] = $handler;
+        return $this;
     }
 
+    /**
+     * Add a middleware that will be run before routes are matched
+     *
+     * @param mixed $middleware Middleware object or named middleware (via ->registerMiddleware($name))
+     * @return self
+     */
     public function setPrerouteMiddleware($middleware)
     {
         $this->preRouteMiddlewareStack[] = $middleware;
+        return $this;
     }
 }
