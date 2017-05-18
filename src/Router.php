@@ -21,8 +21,7 @@ class Router implements Delegate
     protected $routeCollection;
     protected $dispatcher;
     
-    /** @var Psr\SimpleCache\CacheInterface|Psr\Cache\CacheItemPoolInterface
-        PSR6/16 compatible cache item
+    /** @var Psr16|Psr6 PSR6/16 compatible cache item
       */
     protected $cache;
 
@@ -38,7 +37,7 @@ class Router implements Delegate
     /** @var Middleware[] List of registered middlewares on this router */
     protected $middleware = [];
     
-    /** @var mixed[] List of middlewares to run before matching routes */
+    /** @var array List of middlewares to run before matching routes */
     protected $preRouteMiddlewareStack = [null];
 
     /**
@@ -46,7 +45,7 @@ class Router implements Delegate
      * See https://github.com/nikic/FastRoute for more details
      *
      * @param array $options Option overrides
-     * @param Psr\SimpleCache\CacheInterface|Psr\Cache\CacheItemPoolInterface $cache A PSR-6 or PSR-16 compatible Cache object
+     * @param Psr16|Psr6 $cache A PSR-6 or PSR-16 compatible Cache object
      */
     public function __construct(array $options = [], $cache = null)
     {
@@ -115,7 +114,6 @@ class Router implements Delegate
      * Internal function to retrieve a cached value from PSR-6/16 cache object
      *
      * @param string $key Cache key to retrieve from cache
-     * @return self
      */
     protected function getCachedValue($key)
     {
@@ -153,7 +151,7 @@ class Router implements Delegate
      * Will call pre-route middleware, then match route and execute that route (more middleware + controller)
      *
      * @param Request $request Request object for current process
-     * @return Response Response to http request ready for dispatch 
+     * @return Response Response to http request ready for dispatch
      */
     public function process(Request $request) : Response
     {
@@ -199,7 +197,7 @@ class Router implements Delegate
      * @param Request $request The request that caused the exception.
      * @param mixed $currentContext Some data to try and guess the context from.
      * @return Response The response to the exception (e.g. error page)
-     */    
+     */
     protected function handleException(\Throwable $e, Request $request, $currentContext = null) : Response
     {
         // Figure out which Middleware/Controller we're in
@@ -258,7 +256,7 @@ class Router implements Delegate
     public function registerMiddleware($name, Middleware $middleware)
     {
         $this->middleware[$name] = $middleware;
-        return $self;
+        return $this;
     }
    
     /**

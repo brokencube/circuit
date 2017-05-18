@@ -27,7 +27,7 @@ class ParameterMatcher implements Middleware
             foreach ($args as $key => $value) {
                 if ($key == $p->name) {
                     $newparams[$var] = $value;
-                    unset ($args[$key]);
+                    unset($args[$key]);
                 }
             }
         }

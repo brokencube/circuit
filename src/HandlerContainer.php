@@ -19,7 +19,7 @@ class HandlerContainer implements Delegate
     /** @var string The method to call on the Controller for this route*/
     public $controllerMethod;
     
-    /** @var Circuit\Router The router responsible for this route - this gets assigned when a route is executed */
+    /** @var \Circuit\Router The router responsible for this route - this gets assigned when a route is executed */
     protected $router;
 
     /**
