@@ -209,7 +209,7 @@ class Router implements Delegate
             if (current($currentContext->middlewareStack)) {
                 $context = get_class(current($currentContext->middlewareStack));
             } else {
-                $context = get_class($currentContext->controllerClass);
+                $context = $currentContext->controllerClass . '@' . $currentContext->controllerMethod;
             }
         } elseif (is_array($currentContext)) {
             $context = $currentContext;
