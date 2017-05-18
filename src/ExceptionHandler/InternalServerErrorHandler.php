@@ -8,7 +8,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class InternalServerErrorHandler implements ExceptionHandler
 {
-    function handle(\HttpException $e, Request $request, $context) : Response
+    function handle(HttpException $e, Request $request, $context) : Response
     {
         return new Response(
             '500 Internal Server Error',

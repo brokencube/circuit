@@ -150,7 +150,7 @@ class Router implements Delegate
         }
     }
     
-    public function handleException(Throwable $e, Request $request, $currentContext = null) : Response
+    public function handleException(\Throwable $e, Request $request, $currentContext = null) : Response
     {
         // Figure out which Middleware/Controller we're in
         if ($currentContext instanceof Middleware) {
@@ -178,31 +178,13 @@ class Router implements Delegate
         
         // Throw to an appropriate handler
         $code = $e->getStatusCode();
-        if ($this->errorRoutes[$code] instanceof ExceptionHandler) {
-            return $this->errorRoutes[$code]->handle($e, $request, $context);
+        if ($this->exceptionHandlers[$code] instanceof ExceptionHandler) {
+            return $this->exceptionHandlers[$code]->handle($e, $request, $context);
         } else {
             return (new \Circuit\ExceptionHandler\DefaultHandler)->handle($e, $request, $context);
         }
     }
     
-    public function default404route(Request $request) : Response
-    {
-        return new Response(
-            '404 Not Found',
-            Response::HTTP_NOT_FOUND,
-            ['content-type' => 'text/html']
-        );
-    }
-    
-    public function default405route(Request $request) : Response
-    {
-        return new Response(
-            '405 Method Not Allowed',
-            Response::METHOD_NOT_ALLOWED,
-            ['content-type' => 'text/html']
-        );
-    }
-
     public function setControllerArguments(...$args)
     {
         $this->controllerArguments = $args;

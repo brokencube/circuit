@@ -7,5 +7,5 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 interface ExceptionHandler
 {
-    function handle(\HttpException $e, Request $request, $context) : Response;
+    function handle(HttpException $e, Request $request, $context) : Response;
 }
