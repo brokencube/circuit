@@ -33,7 +33,7 @@ class HandlerContainer implements Delegate
         list($class, $method) = explode('@', $handler);
         
         // Trim class/namespace
-        $this->controllerClass = trim($class, ' \t\n\r\0\x0B\\');
+        $this->controllerClass = trim($class, " \t\n\r\0\x0B\\");
         $this->controllerMethod = $method ?: 'index';
         $this->addMiddleware($stack);
     }
