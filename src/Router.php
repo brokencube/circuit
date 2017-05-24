@@ -12,9 +12,13 @@ use Psr\Cache\CacheItemPoolInterface as Psr6;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception as Http;
+use Psr\Log\LoggerAwareInterface;
+use Psr\Log\LoggerAwareTrait;
 
-class Router implements Delegate
+class Router implements Delegate, LoggerAwareInterface
 {
+    use LoggerAwareTrait;
+    
     const CACHE_KEY = 'routes_v2';
     
     protected $options = [];
@@ -163,6 +167,7 @@ class Router implements Delegate
                 return $this->getMiddleware($next)->process($request, $this);
             } else {
                 try {
+                    // Null byte poisoning protection
                     list($uri) = explode('?', str_replace(chr(0), '', $request->server->get('REQUEST_URI')));
                     $dispatch = $this->dispatcher->dispatch($request->server->get('REQUEST_METHOD'), $uri);
                     switch ($dispatch[0]) {

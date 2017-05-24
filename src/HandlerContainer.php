@@ -85,6 +85,7 @@ class HandlerContainer implements Delegate
         } else {
             $args = $request->attributes->get('args');
             $constructerArgs = $request->attributes->get('constructor');
+            
             // Call controller with request and args
             $return = (new $this->controllerClass(...$constructerArgs))->{$this->controllerMethod}($request, ...$args);
             
