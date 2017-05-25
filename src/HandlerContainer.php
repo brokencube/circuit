@@ -1,7 +1,10 @@
 <?php
-
+/** Handler Container - A container representing a route target (i.e. Controller) and a list of middleware for that route
+ *
+ */
 namespace Circuit;
 
+use Circuit\Router;
 use Circuit\Interfaces\Middleware;
 use Circuit\Interfaces\Delegate;
 use Circuit\Interfaces\ParameterDereferencer;
@@ -10,23 +13,25 @@ use Symfony\Component\HttpFoundation\Response;
 
 class HandlerContainer implements Delegate
 {
-    /** @var Middleware|null[] Stack of middleware to call for this route */
+    /** @var Middleware|string|null[]  Stack of middleware to call for this route */
     public $middlewareStack = [null];
     
-    /** @var string The Controller class for this route */
+    /** @var string  The Controller class for this route */
     public $controllerClass;
 
-    /** @var string The method to call on the Controller for this route*/
+    /** @var string  The method to call on the Controller for this route */
     public $controllerMethod;
     
-    /** @var \Circuit\Router The router responsible for this route - this gets assigned when a route is executed */
+    /** @var Router  The router responsible for this route - this gets assigned when a route is executed */
     protected $router;
 
     /**
      * Store a handler against a list of middleware
      *
-     * @param mixed $handler
-     * @param Middleware[] $stack
+     * @param mixed               $handler  Name of the controller that will be called for this route. Must be supplied
+     *                                      Laravel style - "ControllerClass@MethodName"
+     * @param Middleware|string[] $stack    A list of middleware (Middleware Objects or named Middleware) to be called
+     *                                      before the controller
      */
     public function __construct($handler, array $stack = [])
     {
@@ -41,7 +46,7 @@ class HandlerContainer implements Delegate
     /**
      * Add middleware to an existing handler stack
      *
-     * @param Middleware[] $stack
+     * @param Middleware|string[] $stack Middleware to add to this route.
      * @return self
      */
     public function addMiddleware(array $stack)
@@ -54,9 +59,9 @@ class HandlerContainer implements Delegate
      * Start processing this route, by calling middleware in order, and then calling the specified Controller
      * This call stores various information (args, controller info) on the Request
      *
-     * @param Router $router The router calling this handler
+     * @param Router $router   The router calling this handler
      * @param Request $request The request for the current route
-     * @param array $args The matched arguments from the route
+     * @param array $args      The matched arguments from the route
      * @return Response
      */
     public function startProcessing(Router $router, Request $request, $args) : Response
@@ -65,7 +70,7 @@ class HandlerContainer implements Delegate
         $request->attributes->set('args', $args);
         $request->attributes->set('class', $this->controllerClass);
         $request->attributes->set('method', $this->controllerMethod);
-        $request->attributes->set('constructor', $this->router->controllerArguments);
+        $request->attributes->set('constructor', $this->router->getControllerArguments());
         return $this->process($request);
     }
     

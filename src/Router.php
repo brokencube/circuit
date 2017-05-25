@@ -1,5 +1,11 @@
 <?php
 
+/** Circuit - FastRoute + Middleware
+ *
+ * An implementation of nikic\FastRoute, with added capability of pre and post route middleware,
+ * modelled after PSR-15 but using HTTP Foundation Request/Response objects as well as support for
+ * PSR 6 and PSR 16 based caching solutions.
+ */
 namespace Circuit;
 
 use Circuit\Interfaces\Middleware;
@@ -22,15 +28,16 @@ class Router implements Delegate, LoggerAwareInterface
     
     const CACHE_KEY = 'routes_v2';
     
+    /** @var mixed[] Various options as defined by FastRoute */
     protected $options = [];
-    protected $routeCollection;
-    protected $dispatcher;
     
-    /** @var float Timer for logging */
+    /** @var mixed Router Collector - Concrete class defined by options. */
+    protected $routeCollection;
+    
+    /** @var float Timer for debug logging purposes */
     protected $stopwatch;
     
-    /** @var Psr16|Psr6 PSR6/16 compatible cache item
-      */
+    /** @var Psr16|Psr6 PSR6/16 compatible cache item */
     protected $cache;
 
     /** @var bool Did we pull results from cache i.e. do we need to call the RouteCollector callback */
@@ -40,13 +47,13 @@ class Router implements Delegate, LoggerAwareInterface
     public $exceptionHandlers = [];
 
     /** @var mixed[] List of arguments passed to Controller constructor */
-    public $controllerArguments = [];
+    protected $controllerArgs = [];
 
     /** @var Middleware[] List of registered middlewares on this router */
-    protected $middleware = [];
+    protected $namedMiddleware = [];
     
     /** @var array List of middlewares to run before matching routes */
-    protected $preRouteMiddlewareStack = [null];
+    protected $prerouteMiddleware = [null];
 
     /**
      * Create a new Router
@@ -62,8 +69,7 @@ class Router implements Delegate, LoggerAwareInterface
             'dataGenerator' => 'FastRoute\\DataGenerator\\GroupCountBased',
             'dispatcher' => 'FastRoute\\Dispatcher\\GroupCountBased',
             'routeCollector' => 'Circuit\\RouteCollector',
-            'cacheTimeout' => 3600,
-            'errorRoutes' => []
+            'cacheTimeout' => 3600
         ];
         $this->cache = $cache;
         $this->logger = $logger;
@@ -171,7 +177,8 @@ class Router implements Delegate, LoggerAwareInterface
     public function process(Request $request) : Response
     {
         try {
-            $next = next($this->preRouteMiddlewareStack);
+            // Try and run the next middleware
+            $next = next($this->prerouteMiddleware);
             if ($next instanceof Middleware) {
                 $this->log("Router: Calling Middleware: %s", get_class($next));
                 $response = $next->process($request, $this);
@@ -200,7 +207,8 @@ class Router implements Delegate, LoggerAwareInterface
                         
                         case Dispatcher::FOUND:
                             $dispatcher = unserialize($dispatch[1]);
-                            $this->log("Router: Route matched: %s@%s", $dispatcher->controllerClass, $dispatcher->controllerMethod);
+                            $this->log("Router: Route matched: %s@%s",
+                                $dispatcher->controllerClass, $dispatcher->controllerMethod);
                             return $dispatcher->startProcessing($this, $request, $dispatch[2]);
                             break;
                     }
@@ -231,8 +239,8 @@ class Router implements Delegate, LoggerAwareInterface
         } elseif (is_string($currentContext)) {
             $context = get_class($this->getMiddleware($currentContext));
         } elseif ($currentContext instanceof HandlerContainer) {
-            if (current($currentContext->middlewareStack)) {
-                $context = get_class(current($currentContext->middlewareStack));
+            if (current($currentContext->namedMiddlewareStack)) {
+                $context = get_class(current($currentContext->namedMiddlewareStack));
             } else {
                 $context = $currentContext->controllerClass . '@' . $currentContext->controllerMethod;
             }
@@ -266,8 +274,18 @@ class Router implements Delegate, LoggerAwareInterface
      */
     public function setControllerArguments(...$args)
     {
-        $this->controllerArguments = $args;
+        $this->controllerArgs = $args;
         return $this;
+    }
+
+    /**
+     * Get arguments that will be passed to the constructor for any controllers invoked
+     *
+     * @return mixed[] An array of the arguments, which can be unpacked with the ... splat operator
+     */
+    public function getControllerArguments()
+    {
+        return $this->controllerArgs;
     }
 
     /**
@@ -280,7 +298,7 @@ class Router implements Delegate, LoggerAwareInterface
      */
     public function registerMiddleware($name, Middleware $middleware)
     {
-        $this->middleware[$name] = $middleware;
+        $this->namedMiddleware[$name] = $middleware;
         return $this;
     }
    
@@ -293,12 +311,24 @@ class Router implements Delegate, LoggerAwareInterface
      */
     public function getMiddleware($name) : Middleware
     {
-        if (!array_key_exists($name, $this->middleware)) {
+        if (!array_key_exists($name, $this->namedMiddleware)) {
             throw new \UnexpectedValueException("No middleware registered under name '{$name}'");
         }
-        return $this->middleware[$name];
+        return $this->namedMiddleware[$name];
     }
     
+    /**
+     * Add a middleware that will be run before routes are matched
+     *
+     * @param mixed $middleware Middleware object or named middleware (via ->registerMiddleware($name))
+     * @return self
+     */
+    public function addPrerouteMiddleware($middleware)
+    {
+        $this->prerouteMiddleware[] = $middleware;
+        return $this;
+    }
+
     /**
      * Register an exception handler for a particular HTTP code.
      *
@@ -311,24 +341,20 @@ class Router implements Delegate, LoggerAwareInterface
         $this->exceptionHandlers[$code] = $handler;
         return $this;
     }
-
+    
     /**
-     * Add a middleware that will be run before routes are matched
+     * Log a debug message, and append time elapsed since ->run() was called
      *
-     * @param mixed $middleware Middleware object or named middleware (via ->registerMiddleware($name))
+     * @param string $message sprintf compatible string
+     * @param mixed[] $args Data to pass to sprintf
      * @return self
      */
-    public function setPrerouteMiddleware($middleware)
-    {
-        $this->preRouteMiddlewareStack[] = $middleware;
-        return $this;
-    }
-    
     public function log($message, ...$args)
     {
         if ($this->logger) {
-            $args[] = microtime(true) - $this->stopwatch;
+            $args[] = $this->stopwatch ? microtime(true) - $this->stopwatch : 0;
             $this->logger->debug(sprintf($message . ' (%.2fms)', ...$args));
         }
+        return $this;
     }
 }
