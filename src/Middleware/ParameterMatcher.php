@@ -7,8 +7,25 @@ use Circuit\Interfaces\Delegate;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * Parameter Matcher
+ *
+ * A middleware that reorders controller method parameters so that named parameters in the method signature
+ * match to named parameters in the router definition. Any unmatched parameters will be called in their original
+ * order
+ *
+ * @author Nik Barham <nik@brokencube.co.uk>
+ */
 class ParameterMatcher implements Middleware
 {
+    /**
+     * Run Middleware for a particular request
+     *
+     * @param Request  $request    HTTP Foundation Request object
+     * @param Delegate $delegate   Either the Router or HandlerContainer, depending on whether this is run pre or post
+     *                             routing
+     * @return Response
+     */
     public function process(Request $request, Delegate $delegate) : Response
     {
         $controller = $request->attributes->get('class');

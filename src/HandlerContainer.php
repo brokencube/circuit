@@ -1,7 +1,4 @@
 <?php
-/** Handler Container - A container representing a route target (i.e. Controller) and a list of middleware for that route
- *
- */
 namespace Circuit;
 
 use Circuit\Router;
@@ -11,6 +8,12 @@ use Circuit\Interfaces\ParameterDereferencer;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * A container representing a route target (i.e. Controller) and a list of middleware for that route
+ * It is also responsible for dispatching all middleware before calling the controller.
+ *
+ * @author Nik Barham <nik@brokencube.co.uk>
+ */
 class HandlerContainer implements Delegate
 {
     /** @var Middleware|string|null[]  Stack of middleware to call for this route */

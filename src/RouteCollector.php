@@ -8,6 +8,11 @@ use Symfony\Component\HttpFoundation\Response;
 use FastRoute\RouteParser;
 use FastRoute\DataGenerator;
 
+/**
+ * Based on nikic\FastRoute RouteCollector, but with added Middleware support
+ *
+ * @author Nik Barham <nik@brokencube.co.uk>
+ */
 class RouteCollector
 {
     /** @var RouteParser FastRoute compatible Route Parser as set in Router::$options */

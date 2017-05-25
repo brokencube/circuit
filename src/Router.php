@@ -1,11 +1,5 @@
 <?php
 
-/** Circuit - FastRoute + Middleware
- *
- * An implementation of nikic\FastRoute, with added capability of pre and post route middleware,
- * modelled after PSR-15 but using HTTP Foundation Request/Response objects as well as support for
- * PSR 6 and PSR 16 based caching solutions.
- */
 namespace Circuit;
 
 use Circuit\Interfaces\Middleware;
@@ -22,6 +16,15 @@ use Psr\Log\LoggerInterface;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 
+/**
+ * Circuit - FastRoute + Middleware
+ *
+ * An implementation of nikic\FastRoute, with added capability of pre and post route middleware,
+ * modelled after PSR-15 but using HTTP Foundation Request/Response objects as well as support for
+ * PSR 6 and PSR 16 based caching solutions.
+ *
+ * @author Nik Barham <nik@brokencube.co.uk>
+ */
 class Router implements Delegate, LoggerAwareInterface
 {
     use LoggerAwareTrait;
