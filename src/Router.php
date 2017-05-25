@@ -100,13 +100,13 @@ class Router implements Delegate, LoggerAwareInterface
      * Define routes using a routerCollector
      * See https://github.com/nikic/FastRoute for more details
      *
-     * @param callable $routeDefinitionCallback Callback that will define the routes
+     * @param callable $definitionCallback Callback that will define the routes
      * @return self
      */
-    public function defineRoutes(callable $routeDefinitionCallback)
+    public function defineRoutes(callable $definitionCallback)
     {
         if (!$this->cached) {
-            $routeDefinitionCallback($this->routeCollection);
+            $definitionCallback($this->routeCollection);
             // PSR-16 Cache
             if ($this->cache instanceof Psr16) {
                 $this->cache->set(static::CACHE_KEY, $this->routeCollection, $this->options['cacheTimeout']);
@@ -207,8 +207,7 @@ class Router implements Delegate, LoggerAwareInterface
                         
                         case Dispatcher::FOUND:
                             $dispatcher = unserialize($dispatch[1]);
-                            $this->log("Router: Route matched: %s@%s",
-                                $dispatcher->controllerClass, $dispatcher->controllerMethod);
+                            $this->log("Router: Route matched: %s@%s", $dispatcher->controllerClass, $dispatcher->controllerMethod);
                             return $dispatcher->startProcessing($this, $request, $dispatch[2]);
                             break;
                     }
