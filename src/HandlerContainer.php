@@ -79,15 +79,23 @@ class HandlerContainer implements Delegate
     {
         $next = next($this->middlewareStack);
         if ($next instanceof Middleware) {
-            return $next->process($request, $this);
+            $this->router->log("Router: Calling Middleware: %s", get_class($next));
+            $response = $next->process($request, $this);
+            $this->router->log("Router: Leaving Middleware: %s", get_class($next));
+            return $response;
         } elseif (is_string($next)) {
-            return $this->router->getMiddleware($next)->process($request, $this);
+            $this->router->log("Router: Calling Middleware: %s", $next);
+            $response = $this->router->getMiddleware($next)->process($request, $this);
+            $this->router->log("Router: Leaving Middleware: %s", $next);
+            return $response;
         } else {
             $args = $request->attributes->get('args');
             $constructerArgs = $request->attributes->get('constructor');
             
             // Call controller with request and args
+            $this->router->log("Router: Calling Controller: %s@%s", $this->controllerClass, $this->controllerMethod);
             $return = (new $this->controllerClass(...$constructerArgs))->{$this->controllerMethod}($request, ...$args);
+            $this->router->log("Router: Controller Left");
             
             if ($return instanceof Response) {
                 return $return;

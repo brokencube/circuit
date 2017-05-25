@@ -12,6 +12,7 @@ use Psr\Cache\CacheItemPoolInterface as Psr6;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception as Http;
+use Psr\Log\LoggerInterface;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 
@@ -24,6 +25,9 @@ class Router implements Delegate, LoggerAwareInterface
     protected $options = [];
     protected $routeCollection;
     protected $dispatcher;
+    
+    /** @var float Timer for logging */
+    protected $stopwatch;
     
     /** @var Psr16|Psr6 PSR6/16 compatible cache item
       */
@@ -51,7 +55,7 @@ class Router implements Delegate, LoggerAwareInterface
      * @param array $options Option overrides
      * @param Psr16|Psr6 $cache A PSR-6 or PSR-16 compatible Cache object
      */
-    public function __construct(array $options = [], $cache = null)
+    public function __construct(array $options = [], $cache = null, LoggerInterface $logger = null)
     {
         $this->options = $options + [
             'routeParser' => 'FastRoute\\RouteParser\\Std',
@@ -62,6 +66,7 @@ class Router implements Delegate, LoggerAwareInterface
             'errorRoutes' => []
         ];
         $this->cache = $cache;
+        $this->logger = $logger;
         
         // PSR-16 Cache
         if ($this->cache instanceof Psr16) {
@@ -145,9 +150,15 @@ class Router implements Delegate, LoggerAwareInterface
      */
     public function run(Request $request)
     {
+        $this->stopwatch = microtime(true);
+        $starttime = $request->server->get('REQUEST_TIME_FLOAT');
+        
+        $this->log("Router: ->run() called. Starting clock at REQUEST_TIME+%.2fms", microtime(true) - $starttime);
         $response = $this->process($request);
+        $this->log("Router: Preparing to send response");
         $response->prepare($request);
         $response->send();
+        $this->log("Router: Response sent");
     }
     
     /**
@@ -162,9 +173,15 @@ class Router implements Delegate, LoggerAwareInterface
         try {
             $next = next($this->preRouteMiddlewareStack);
             if ($next instanceof Middleware) {
-                return $next->process($request, $this);
+                $this->log("Router: Calling Middleware: %s", get_class($next));
+                $response = $next->process($request, $this);
+                $this->log("Router: Leaving Middleware: %s", get_class($next));
+                return $response;
             } elseif (is_string($next)) {
-                return $this->getMiddleware($next)->process($request, $this);
+                $this->log("Router: Calling Middleware: %s", $next);
+                $response = $this->getMiddleware($next)->process($request, $this);
+                $this->log("Router: Leaving Middleware: %s", $next);
+                return $response;
             } else {
                 try {
                     // Null byte poisoning protection
@@ -172,15 +189,18 @@ class Router implements Delegate, LoggerAwareInterface
                     $dispatch = $this->dispatcher->dispatch($request->server->get('REQUEST_METHOD'), $uri);
                     switch ($dispatch[0]) {
                         case Dispatcher::NOT_FOUND:
+                            $this->log("Router: Route not matched");
                             throw new Http\NotFoundHttpException();
                             break;
                         
                         case Dispatcher::METHOD_NOT_ALLOWED:
+                            $this->log("Router: Method not Allowed");
                             throw new Http\MethodNotAllowedHttpException($dispatch[1]);
                             break;
                         
                         case Dispatcher::FOUND:
                             $dispatcher = unserialize($dispatch[1]);
+                            $this->log("Router: Route matched: %s@%s", $dispatcher->controllerClass, $dispatcher->controllerMethod);
                             return $dispatcher->startProcessing($this, $request, $dispatch[2]);
                             break;
                     }
@@ -302,5 +322,13 @@ class Router implements Delegate, LoggerAwareInterface
     {
         $this->preRouteMiddlewareStack[] = $middleware;
         return $this;
+    }
+    
+    public function log($message, ...$args)
+    {
+        if ($this->logger) {
+            $args[] = microtime(true) - $this->stopwatch;
+            $this->logger->debug(sprintf($message . ' (%.2fms)', ...$args));
+        }
     }
 }
