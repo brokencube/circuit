@@ -7,6 +7,7 @@ use Circuit\Interfaces\Delegate;
 use Circuit\Interfaces\ParameterDereferencer;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\JsonResponse;
 
 /**
  * A container representing a route target (i.e. Controller) and a list of middleware for that route
@@ -105,10 +106,21 @@ class HandlerContainer implements Delegate
             $return = (new $this->controllerClass(...$constructerArgs))->{$this->controllerMethod}($request, ...$args);
             $this->router->log("Router: Controller Left");
             
+            // Instantly return Response objects
             if ($return instanceof Response) {
                 return $return;
             }
             
+            // If not a string (or something easily castable to a string) assume Json -> JsonResponse
+            if (is_array($return) or is_object($return)) {
+                return new JsonResponse(
+                    $return,
+                    Response::HTTP_OK,
+                    array('content-type' => 'application/json')
+                );
+            }
+            
+            // Strings, and other primitives.
             return new Response(
                 $return,
                 Response::HTTP_OK,
