@@ -193,33 +193,30 @@ class Router implements Delegate, LoggerAwareInterface
                 $this->log("Router: Leaving Middleware: %s", $next);
                 return $response;
             } else {
-                try {
-                    // Null byte poisoning protection
-                    list($uri) = explode('?', str_replace(chr(0), '', $request->server->get('REQUEST_URI')));
-                    $dispatch = $this->dispatcher->dispatch($request->server->get('REQUEST_METHOD'), $uri);
-                    switch ($dispatch[0]) {
-                        case Dispatcher::NOT_FOUND:
-                            $this->log("Router: Route not matched");
-                            throw new Http\NotFoundHttpException();
-                            break;
-                        
-                        case Dispatcher::METHOD_NOT_ALLOWED:
-                            $this->log("Router: Method not Allowed");
-                            throw new Http\MethodNotAllowedHttpException($dispatch[1]);
-                            break;
-                        
-                        case Dispatcher::FOUND:
+                // Null byte poisoning protection
+                list($uri) = explode('?', str_replace(chr(0), '', $request->server->get('REQUEST_URI')));
+                $dispatch = $this->dispatcher->dispatch($request->server->get('REQUEST_METHOD'), $uri);
+                switch ($dispatch[0]) {
+                    case Dispatcher::NOT_FOUND:
+                        $this->log("Router: Route not matched");
+                        throw new Http\NotFoundHttpException('Router: Route not matched');
+                    
+                    case Dispatcher::METHOD_NOT_ALLOWED:
+                        $this->log("Router: Method not Allowed");
+                        throw new Http\MethodNotAllowedHttpException('Router: Method not Allowed: ' . $dispatch[1]);
+                    
+                    case Dispatcher::FOUND:
+                        try {
                             $dispatcher = unserialize($dispatch[1]);
                             $this->log("Router: Route matched: %s@%s", $dispatcher->controllerClass, $dispatcher->controllerMethod);
                             return $dispatcher->startProcessing($this, $request, $dispatch[2]);
-                            break;
-                    }
-                } catch (\Throwable $e) {
-                    return $this->handleException($e, $request, $dispatcher ?: $dispatch);
+                        } catch (\Throwable $e) {
+                            return $this->handleException($e, $request, $dispatcher);
+                        }
                 }
             }
         } catch (\Throwable $e) {
-            return $this->handleException($e, $request, $next);
+            return $this->handleException($e, $request, $next ?: $this);
         }
     }
     
