@@ -48,6 +48,9 @@ class Router implements Delegate, LoggerAwareInterface
 
     /** @var ExceptionHandler[] List of exception handlers for particular HTTP codes */
     public $exceptionHandlers = [];
+    
+    /** @var ExceptionHandler|null Default Exception Handler */
+    public $defaultExceptionHandler = null;
 
     /** @var mixed[] List of arguments passed to Controller constructor */
     protected $controllerArgs = [];
@@ -57,7 +60,7 @@ class Router implements Delegate, LoggerAwareInterface
     
     /** @var array List of middlewares to run before matching routes */
     protected $prerouteMiddleware = [null];
-
+    
     /**
      * Create a new Router
      * See https://github.com/nikic/FastRoute for more details
@@ -238,8 +241,8 @@ class Router implements Delegate, LoggerAwareInterface
         } elseif (is_string($currentContext)) {
             $context = get_class($this->getMiddleware($currentContext));
         } elseif ($currentContext instanceof HandlerContainer) {
-            if (current($currentContext->namedMiddlewareStack)) {
-                $context = get_class(current($currentContext->namedMiddlewareStack));
+            if (current($currentContext->middlewareStack)) {
+                $context = get_class(current($currentContext->middlewareStack));
             } else {
                 $context = $currentContext->controllerClass . '@' . $currentContext->controllerMethod;
             }
@@ -260,6 +263,8 @@ class Router implements Delegate, LoggerAwareInterface
         $code = $e->getStatusCode();
         if ($this->exceptionHandlers[$code] instanceof ExceptionHandler) {
             return $this->exceptionHandlers[$code]->handle($e, $request, $context);
+        } elseif ($this->defaultExceptionHandler instanceof ExceptionHandler) {
+            return $this->defaultExceptionHandler->handle($e, $request, $context);
         } else {
             return (new \Circuit\ExceptionHandler\DefaultHandler)->handle($e, $request, $context);
         }
@@ -338,6 +343,19 @@ class Router implements Delegate, LoggerAwareInterface
     public function setExceptionHandler($code, ExceptionHandler $handler)
     {
         $this->exceptionHandlers[$code] = $handler;
+        return $this;
+    }
+
+    /**
+     * Register an exception handler for a particular HTTP code.
+     *
+     * @param string $code HTTP code handler is responsible for
+     * @param ExceptionHandler $hander Handler
+     * @return self
+     */
+    public function setDefaultExceptionHandler($code, ExceptionHandler $handler)
+    {
+        $this->defaultExceptionHandler = $handler;
         return $this;
     }
     
