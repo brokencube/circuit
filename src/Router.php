@@ -353,7 +353,7 @@ class Router implements Delegate, LoggerAwareInterface
      * @param ExceptionHandler $hander Handler
      * @return self
      */
-    public function setDefaultExceptionHandler($code, ExceptionHandler $handler)
+    public function setDefaultExceptionHandler(ExceptionHandler $handler)
     {
         $this->defaultExceptionHandler = $handler;
         return $this;
