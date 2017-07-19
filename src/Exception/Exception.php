@@ -11,7 +11,7 @@ class Exception extends \Exception implements HttpExceptionInterface, ExceptionC
     public $statusCode;
     public $headers = [];
     
-    public function __construct($message, $context = null, Throwable $previous = null, int $code = 500)
+    public function __construct($message, $context = null, \Throwable $previous = null, int $code = 500)
     {
         parent::__construct($message, $code, $previous);
         $this->statusCode = $code;
