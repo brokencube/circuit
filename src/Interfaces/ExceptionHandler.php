@@ -4,9 +4,9 @@ namespace Circuit\Interfaces;
 
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\HttpException;
+use Circuit\Exception\Exception;
 
 interface ExceptionHandler
 {
-    public function handle(HttpException $e, Request $request, $context) : Response;
+    public function handle(Exception $e, Request $request, $context) : Response;
 }
