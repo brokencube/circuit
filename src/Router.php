@@ -236,7 +236,9 @@ class Router implements Delegate, LoggerAwareInterface
     protected function handleException(\Throwable $e, Request $request, $currentContext = null) : Response
     {
         // Figure out which Middleware/Controller we're in
-        if ($currentContext instanceof Middleware) {
+        if ($currentContext === $this) {
+            $context = 'Router';
+        } elseif ($currentContext instanceof Middleware) {
             $context = get_class($currentContext);
         } elseif (is_string($currentContext)) {
             $context = get_class($this->getMiddleware($currentContext));
