@@ -6,12 +6,12 @@ use Circuit\Interfaces\Middleware;
 use Circuit\Interfaces\ParameterDereferencer;
 use Circuit\Interfaces\ExceptionHandler;
 use Circuit\Interfaces\Delegate;
+use Circuit\Exception;
 use FastRoute\Dispatcher;
 use Psr\SimpleCache\CacheInterface as Psr16;
 use Psr\Cache\CacheItemPoolInterface as Psr6;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception as Http;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -202,11 +202,11 @@ class Router implements Delegate, LoggerAwareInterface
                 switch ($dispatch[0]) {
                     case Dispatcher::NOT_FOUND:
                         $this->log("Router: Route not matched");
-                        throw new Http\NotFoundHttpException('Router: Route not matched');
+                        throw new Exception\NotFound('Router: Route not matched');
                     
                     case Dispatcher::METHOD_NOT_ALLOWED:
                         $this->log("Router: Method not Allowed");
-                        throw new Http\MethodNotAllowedHttpException($dispatch[1], 'Router: Method not Allowed: ' . $request->getMethod());
+                        throw new Exception\MethodNotAllowed($dispatch[1], 'Router: Method not Allowed: ' . $request->getMethod());
                     
                     case Dispatcher::FOUND:
                         try {
@@ -251,12 +251,8 @@ class Router implements Delegate, LoggerAwareInterface
         }
         
         // Wrap non HTTP exception/errors
-        if (!$e instanceof Http\HttpExceptionInterface && $e instanceof \Exception) {
-            $e = new Http\HttpException(500, 'Uncaught Exception', $e);
-        }
-
-        if (!$e instanceof Http\HttpExceptionInterface && $e instanceof \Error) {
-            $e = new Http\HttpException(500, 'Uncaught Error', new \Exception("Uncaught Error", 503, $e));
+        if (!$e instanceof Exception\Exception) {
+            $e = new Exception\Exception('Uncaught Exception\Error', $context, $e);
         }
         
         // Throw to an appropriate handler
