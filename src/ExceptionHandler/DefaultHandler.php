@@ -3,7 +3,7 @@
 namespace Circuit\ExceptionHandler;
 
 use Circuit\Interfaces\ExceptionHandler;
-use Circuit\Exception;
+use Circuit\Exception\Exception;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
