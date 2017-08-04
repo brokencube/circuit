@@ -368,7 +368,7 @@ class Router implements Delegate, LoggerAwareInterface
     {
         if ($this->logger) {
             $args[] = $this->stopwatch ? microtime(true) - $this->stopwatch : 0;
-            $this->logger->debug(sprintf($message . ' (%.2fms)', ...$args));
+            $this->logger->debug(sprintf($message . ' (%.2fs)', ...$args));
         }
         return $this;
     }
