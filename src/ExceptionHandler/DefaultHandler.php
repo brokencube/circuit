@@ -14,7 +14,7 @@ class DefaultHandler implements ExceptionHandler
         return new Response(
             $e->getStatusCode() . ' ' . Response::$statusTexts[$e->getStatusCode()],
             $e->getStatusCode(),
-            ['content-type' => 'text/html']
+            $e->getHeaders() + ['content-type' => 'text/html']
         );
     }
 }
