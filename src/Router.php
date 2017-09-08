@@ -214,12 +214,12 @@ class Router implements Delegate, LoggerAwareInterface
                             $this->log("Router: Route matched: %s@%s", $dispatcher->controllerClass, $dispatcher->controllerMethod);
                             return $dispatcher->startProcessing($this, $request, $dispatch[2]);
                         } catch (\Throwable $e) {
-                            return $this->handleException($e, $request, $dispatcher);
+                            return $this->handleException($e, $request);
                         }
                 }
             }
         } catch (\Throwable $e) {
-            return $this->handleException($e, $request, $next ?: $this);
+            return $this->handleException($e, $request);
         }
     }
     
@@ -233,38 +233,21 @@ class Router implements Delegate, LoggerAwareInterface
      * @param mixed $currentContext Some data to try and guess the context from.
      * @return Response The response to the exception (e.g. error page)
      */
-    protected function handleException(\Throwable $e, Request $request, $currentContext = null) : Response
+    protected function handleException(\Throwable $e, Request $request) : Response
     {
-        // Figure out which Middleware/Controller we're in
-        if ($currentContext === $this) {
-            $context = 'Router';
-        } elseif ($currentContext instanceof Middleware) {
-            $context = get_class($currentContext);
-        } elseif (is_string($currentContext)) {
-            $context = get_class($this->getMiddleware($currentContext));
-        } elseif ($currentContext instanceof HandlerContainer) {
-            if (current($currentContext->middlewareStack)) {
-                $context = get_class(current($currentContext->middlewareStack));
-            } else {
-                $context = $currentContext->controllerClass . '@' . $currentContext->controllerMethod;
-            }
-        } elseif (is_array($currentContext)) {
-            $context = $currentContext;
-        }
-        
         // Wrap non HTTP exception/errors
         if (!$e instanceof Exception\Exception) {
-            $e = new Exception\Exception('Uncaught Exception\Error', $context, $e);
+            $e = new Exception\UncaughtException($e);
         }
         
         // Throw to an appropriate handler
         $code = $e->getStatusCode();
         if ($this->exceptionHandlers[$code] instanceof ExceptionHandler) {
-            return $this->exceptionHandlers[$code]->handle($e, $request, $context);
+            return $this->exceptionHandlers[$code]->handle($e, $request);
         } elseif ($this->defaultExceptionHandler instanceof ExceptionHandler) {
-            return $this->defaultExceptionHandler->handle($e, $request, $context);
+            return $this->defaultExceptionHandler->handle($e, $request);
         } else {
-            return (new \Circuit\ExceptionHandler\DefaultHandler)->handle($e, $request, $context);
+            return (new \Circuit\ExceptionHandler\DefaultHandler)->handle($e, $request);
         }
     }
     

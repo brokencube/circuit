@@ -8,5 +8,5 @@ use Circuit\Exception\Exception;
 
 interface ExceptionHandler
 {
-    public function handle(Exception $e, Request $request, $context) : Response;
+    public function handle(Exception $e, Request $request) : Response;
 }
