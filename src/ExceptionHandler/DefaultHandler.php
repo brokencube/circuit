@@ -9,8 +9,14 @@ use Symfony\Component\HttpFoundation\Response;
 
 class DefaultHandler implements ExceptionHandler
 {
-    public function handle(Exception $e, Request $request, $context) : Response
+    public function handle(Exception $e, Request $request) : Response
     {
+        if (in_array('application/json', $request->getAcceptableContentTypes())) {
+            return new JsonResponse(
+                ['error' => $e->getStatusCode() . ' ' . Response::$statusTexts[$e->getStatusCode()] ],
+                $e->getStatusCode()
+            );
+        }
         return new Response(
             $e->getStatusCode() . ' ' . Response::$statusTexts[$e->getStatusCode()],
             $e->getStatusCode(),

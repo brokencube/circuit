@@ -1,6 +1,7 @@
 <?php
 
 namespace Circuit\Exception;
+
 use Circuit\Interfaces\ExceptionContextInterface;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpFoundation\Response;

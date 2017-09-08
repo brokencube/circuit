@@ -206,12 +206,19 @@ class Router implements Delegate, LoggerAwareInterface
                     
                     case Dispatcher::METHOD_NOT_ALLOWED:
                         $this->log("Router: Method not Allowed");
-                        throw new Exception\MethodNotAllowed($dispatch[1], 'Router: Method not Allowed: ' . $request->getMethod());
+                        throw new Exception\MethodNotAllowed(
+                            $dispatch[1],
+                            'Router: Method not Allowed: ' . $request->getMethod()
+                        );
                     
                     case Dispatcher::FOUND:
                         try {
                             $dispatcher = unserialize($dispatch[1]);
-                            $this->log("Router: Route matched: %s@%s", $dispatcher->controllerClass, $dispatcher->controllerMethod);
+                            $this->log(
+                                "Router: Route matched: %s@%s",
+                                $dispatcher->controllerClass,
+                                $dispatcher->controllerMethod
+                            );
                             return $dispatcher->startProcessing($this, $request, $dispatch[2]);
                         } catch (\Throwable $e) {
                             return $this->handleException($e, $request);
