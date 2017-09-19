@@ -40,7 +40,7 @@ class Router implements Delegate, LoggerAwareInterface
     /** @var float Timer for debug logging purposes */
     protected $stopwatch;
     
-    /** @var Psr16|Psr6 PSR6/16 compatible cache item */
+    /** @var CacheWrapper PSR6/16 compatible cache item */
     protected $cache;
 
     /** @var bool Did we pull results from cache i.e. do we need to call the RouteCollector callback */
@@ -77,21 +77,9 @@ class Router implements Delegate, LoggerAwareInterface
             'routeCollector' => 'Circuit\\RouteCollector',
             'cacheTimeout' => 3600
         ];
-        $this->cache = $cache;
         $this->logger = $logger;
-        
-        // PSR-16 Cache
-        if ($this->cache instanceof Psr16) {
-            $this->routeCollection = $this->cache->get(static::CACHE_KEY);
-        }
-
-        // PSR-6 Cache
-        if ($this->cache instanceof Psr6) {
-            $item = $this->cache->getItem(static::CACHE_KEY);
-            if ($item->isHit()) {
-                $this->routeCollection = $item->get();
-            }
-        }
+        $this->cache = $cache ? new CacheWrapper($cache) : null;
+        $this->routeCollection = $this->cache ? $this->cache->get(static::CACHE_KEY) : null;
         
         if ($this->routeCollection) {
             $this->cached = true;
@@ -113,46 +101,14 @@ class Router implements Delegate, LoggerAwareInterface
     {
         if (!$this->cached) {
             $definitionCallback($this->routeCollection);
-            // PSR-16 Cache
-            if ($this->cache instanceof Psr16) {
+            // Cache
+            if ($this->cache) {
                 $this->cache->set(static::CACHE_KEY, $this->routeCollection, $this->options['cacheTimeout']);
-            }
-
-            // PSR-6 Cache
-            if ($this->cache instanceof Psr6) {
-                $item = $this->cache->getItem(static::CACHE_KEY);
-                $item->set($this->routeCollection);
-                $item->expiresAt(new \DateTime('now + ' . $this->options['cacheTimeout'] . 'seconds'));
-                $this->cache->save($item);
             }
         }
         
         $this->dispatcher = new $this->options['dispatcher']($this->routeCollection->getData());
         return $this;
-    }
-    
-    /**
-     * Internal function to retrieve a cached value from PSR-6/16 cache object
-     *
-     * @param string $key Cache key to retrieve from cache
-     */
-    protected function getCachedValue($key)
-    {
-        if (!$this->cache) {
-            return null;
-        }
-        
-        if ($this->cache instanceof Psr\SimpleCache\CacheInterface) {
-            return $this->cache->get($key);
-        }
-        
-        if ($this->cache instanceof Psr\Cache\CachePoolInterface) {
-            $item = $this->cache->getItem($key);
-            if (!$item->isHit()) {
-                return null;
-            }
-            return $item->get();
-        }
     }
     
     /**
