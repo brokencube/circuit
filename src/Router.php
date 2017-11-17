@@ -122,7 +122,13 @@ class Router implements Delegate, LoggerAwareInterface
         $starttime = $request->server->get('REQUEST_TIME_FLOAT');
         
         $this->log("Router: ->run() called. Starting clock at REQUEST_TIME+%.2fms", microtime(true) - $starttime);
-        $response = $this->process($request);
+        try {
+            $response = $this->process($request);
+        } catch (\Throwable $e) {
+            $this->log("Router: Exception");
+            $response = $this->handleException($e, $request);
+        }
+        
         $this->log("Router: Preparing to send response");
         $response->prepare($request);
         $response->send();
@@ -138,51 +144,43 @@ class Router implements Delegate, LoggerAwareInterface
      */
     public function process(Request $request) : Response
     {
-        try {
-            // Try and run the next middleware
-            $next = next($this->prerouteMiddleware);
-            if ($next instanceof Middleware) {
-                $this->log("Router: Calling Middleware: %s", get_class($next));
-                $response = $next->process($request, $this);
-                $this->log("Router: Leaving Middleware: %s", get_class($next));
-                return $response;
-            } elseif (is_string($next)) {
-                $this->log("Router: Calling Middleware: %s", $next);
-                $response = $this->getMiddleware($next)->process($request, $this);
-                $this->log("Router: Leaving Middleware: %s", $next);
-                return $response;
-            } else {
-                // Null byte poisoning protection
-                list($uri) = explode('?', str_replace(chr(0), '', $request->server->get('REQUEST_URI')));
-                $dispatch = $this->dispatcher->dispatch($request->server->get('REQUEST_METHOD'), $uri);
-                switch ($dispatch[0]) {
-                    case Dispatcher::NOT_FOUND:
-                        $this->log("Router: Route not matched");
-                        throw new Exception\NotFound('Router: Route not matched');
-                    
-                    case Dispatcher::METHOD_NOT_ALLOWED:
-                        $this->log("Router: Method not Allowed");
-                        throw new Exception\MethodNotAllowed(
-                            $dispatch[1],
-                            'Router: Method not Allowed: ' . $request->getMethod()
-                        );
-                    
-                    case Dispatcher::FOUND:
-                        try {
-                            $dispatcher = unserialize($dispatch[1]);
-                            $this->log(
-                                "Router: Route matched: %s@%s",
-                                $dispatcher->controllerClass,
-                                $dispatcher->controllerMethod
-                            );
-                            return $dispatcher->startProcessing($this, $request, $dispatch[2]);
-                        } catch (\Throwable $e) {
-                            return $this->handleException($e, $request);
-                        }
-                }
+        // Try and run the next middleware
+        $next = next($this->prerouteMiddleware);
+        if ($next instanceof Middleware) {
+            $this->log("Router: Calling Middleware: %s", get_class($next));
+            $response = $next->process($request, $this);
+            $this->log("Router: Leaving Middleware: %s", get_class($next));
+            return $response;
+        } elseif (is_string($next)) {
+            $this->log("Router: Calling Middleware: %s", $next);
+            $response = $this->getMiddleware($next)->process($request, $this);
+            $this->log("Router: Leaving Middleware: %s", $next);
+            return $response;
+        } else {
+            // Null byte poisoning protection
+            list($uri) = explode('?', str_replace(chr(0), '', $request->server->get('REQUEST_URI')));
+            $dispatch = $this->dispatcher->dispatch($request->server->get('REQUEST_METHOD'), $uri);
+            switch ($dispatch[0]) {
+                case Dispatcher::NOT_FOUND:
+                    $this->log("Router: Route not matched");
+                    throw new Exception\NotFound('Router: Route not matched');
+                
+                case Dispatcher::METHOD_NOT_ALLOWED:
+                    $this->log("Router: Method not Allowed");
+                    throw new Exception\MethodNotAllowed(
+                        $dispatch[1],
+                        'Router: Method not Allowed: ' . $request->getMethod()
+                    );
+                
+                case Dispatcher::FOUND:
+                    $dispatcher = unserialize($dispatch[1]);
+                    $this->log(
+                        "Router: Route matched: %s@%s",
+                        $dispatcher->controllerClass,
+                        $dispatcher->controllerMethod
+                    );
+                    return $dispatcher->startProcessing($this, $request, $dispatch[2]);
             }
-        } catch (\Throwable $e) {
-            return $this->handleException($e, $request);
         }
     }
     
