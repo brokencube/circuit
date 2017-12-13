@@ -40,7 +40,7 @@ class ErrorLogger implements Middleware
         try {
             return $delegate->process($request);
         } catch (\Throwable $e) {
-            $this->log->error($e->getMessage(), ['trace' => $e->getTrace(), 'line' => $e->getLine(), 'file' => $e->getFile(), 'code' => $e->getCode()]);
+            $this->log->error($e->getMessage(), ['trace' => $e->getTraceAsString(), 'line' => $e->getLine(), 'file' => $e->getFile(), 'code' => $e->getCode()]);
             throw $e;
         }
     }
