@@ -3,10 +3,9 @@
 namespace Circuit\Exception;
 
 use Circuit\Interfaces\ExceptionContextInterface;
-use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpFoundation\Response;
 
-class Exception extends \Exception implements HttpExceptionInterface, ExceptionContextInterface
+class Exception extends \Exception implements ExceptionContextInterface
 {
     public $context;
     public $statusCode;
