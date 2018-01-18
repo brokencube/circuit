@@ -26,9 +26,6 @@ class HandlerContainer implements Delegate
     /** @var string  The method to call on the Controller for this route */
     public $controllerMethod;
     
-    /** @var Router  The router responsible for this route - this gets assigned when a route is executed */
-    protected $router;
-
     /**
      * Store a handler against a list of middleware
      *
@@ -65,16 +62,17 @@ class HandlerContainer implements Delegate
      *
      * @param Router $router   The router calling this handler
      * @param Request $request The request for the current route
+     * @param string $uri      The matched route uri
      * @param array $args      The matched arguments from the route
      * @return Response
      */
-    public function startProcessing(Router $router, Request $request, $args) : Response
+    public function startProcessing(Router $router, Request $request, $uri, $args) : Response
     {
-        $this->router = $router;
-        $request->attributes->set('args', $args);
-        $request->attributes->set('class', $this->controllerClass);
-        $request->attributes->set('method', $this->controllerMethod);
-        $request->attributes->set('constructor', $this->router->getControllerArguments());
+        $params = new ControllerParams($this->controllerClass, $this->controllerMethod, $args, $router->getServiceContainer());
+        
+        $request->attributes->set('controller', $params);
+        $request->attributes->set('router', $router);
+        $request->attributes->set('route', $uri);
         return $this->process($request);
     }
     
@@ -86,25 +84,26 @@ class HandlerContainer implements Delegate
      */
     public function process(Request $request) : Response
     {
+        $router = $request->attributes->get('router');
+        
         $next = next($this->middlewareStack);
         if ($next instanceof Middleware) {
-            $this->router->log("Router: Calling Middleware: %s", get_class($next));
+            $router->log("Router: Calling Middleware: %s", get_class($next));
             $response = $next->process($request, $this);
-            $this->router->log("Router: Leaving Middleware: %s", get_class($next));
+            $router->log("Router: Leaving Middleware: %s", get_class($next));
             return $response;
         } elseif (is_string($next)) {
-            $this->router->log("Router: Calling Middleware: %s", $next);
-            $response = $this->router->getMiddleware($next)->process($request, $this);
-            $this->router->log("Router: Leaving Middleware: %s", $next);
+            $router->log("Router: Calling Middleware: %s", $next);
+            $response = $router->getMiddleware($next)->process($request, $this);
+            $router->log("Router: Leaving Middleware: %s", $next);
             return $response;
         } else {
-            $args = $request->attributes->get('args');
-            $constructerArgs = $request->attributes->get('constructor');
-            
+            $params = $request->attributes->get('controller');
+
             // Call controller with request and args
-            $this->router->log("Router: Calling Controller: %s@%s", $this->controllerClass, $this->controllerMethod);
-            $return = (new $this->controllerClass(...$constructerArgs))->{$this->controllerMethod}($request, ...$args);
-            $this->router->log("Router: Controller Left");
+            $router->log("Router: Calling Controller: %s@%s", $params->className, $params->method);
+            $return = (new $params->className($params->container))->{$params->method}($request, ...$params->args);
+            $router->log("Router: Controller Left");
             
             // Instantly return Response objects
             if ($return instanceof Response) {
@@ -127,13 +126,5 @@ class HandlerContainer implements Delegate
                 array('content-type' => 'text/html')
             );
         }
-    }
-
-    /**
-     * Remove $this->router when serialising this object
-     */
-    public function __sleep()
-    {
-        return ['controllerClass', 'middlewareStack', 'controllerMethod'];
     }
 }

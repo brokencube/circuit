@@ -15,6 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
+use Psr\Container\ContainerInterface as Container;
 
 /**
  * Circuit - FastRoute + Middleware
@@ -179,19 +180,16 @@ class Router implements Delegate, LoggerAwareInterface
                         $dispatcher->controllerClass,
                         $dispatcher->controllerMethod
                     );
-                    return $dispatcher->startProcessing($this, $request, $dispatch[2]);
+                    return $dispatcher->startProcessing($this, $request, $uri, $dispatch[2]);
             }
         }
     }
     
     /**
      * Handle an exception during processing of route.
-     * Will try and determine context (Controller, Middleware, Router etc) before calling ExceptionHandler
-     * based on HTTP code of Exception (default 500).
      *
      * @param Throwable $e The Exception / Error thrown.
      * @param Request $request The request that caused the exception.
-     * @param mixed $currentContext Some data to try and guess the context from.
      * @return Response The response to the exception (e.g. error page)
      */
     protected function handleException(\Throwable $e, Request $request) : Response
@@ -215,23 +213,23 @@ class Router implements Delegate, LoggerAwareInterface
     /**
      * Set arguments that will be passed to the constructor for any controllers invoked
      *
-     * @param mixed $args Array containing all passed variadic arguments
+     * @param Psr\Container\ContainerInterface $container Service container passed to controller constructor
      * @return self
      */
-    public function setControllerArguments(...$args)
+    public function setServiceContainer(Container $container)
     {
-        $this->controllerArgs = $args;
+        $this->container = $container;
         return $this;
     }
 
     /**
      * Get arguments that will be passed to the constructor for any controllers invoked
      *
-     * @return mixed[] An array of the arguments, which can be unpacked with the ... splat operator
+     * @return Psr\Container\ContainerInterface Service container passed to controller constructor
      */
-    public function getControllerArguments()
+    public function getServiceContainer()
     {
-        return $this->controllerArgs;
+        return $this->container;
     }
 
     /**
