@@ -28,11 +28,10 @@ class ParameterMatcher implements Middleware
      */
     public function process(Request $request, Delegate $delegate) : Response
     {
-        $controller = $request->attributes->get('class');
-        $method = $request->attributes->get('method');
-        $args = $request->attributes->get('args');
+        $params = $request->attributes->get('controller');
+        $args = $params->args;
         
-        $parameters = (new \ReflectionClass($controller))->getMethod($method)->getParameters();
+        $parameters = (new \ReflectionClass($params->className))->getMethod($params->method)->getParameters();
         if ($parameters[0]->name == 'request') {
             array_shift($parameters);
         }
@@ -58,7 +57,7 @@ class ParameterMatcher implements Middleware
         
         ksort($newparams);
         
-        $request->attributes->set('args', $newparams);
+        $param->args = $newparams;
         
         return $delegate->process($request);
     }
