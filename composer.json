@@ -26,5 +26,7 @@
     },
     "autoload": {    
         "psr-4": { "Circuit\\": "src/" }
-    }
+    },
+    "minimum-stability" : "dev",
+    "prefer-stable" : true
 }
