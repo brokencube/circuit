@@ -18,6 +18,9 @@ use Psr\Container\ContainerInterface as Container;
  */
 class ControllerParams
 {
+    /** @var string URI that was matched to the route */
+    public $route;
+    
     /** @var string Controller class to call */
     public $className; 
 
@@ -30,8 +33,9 @@ class ControllerParams
     /** @var Psr\Container\ContainerInterface Container to pass to constructor */
     public $container;
     
-    public function __construct($class, $method, $args, Container $container)
+    public function __construct($route, $class, $method, $args, Container $container)
     {
+        $this->route = $route;
         $this->className = $class;
         $this->method = $method;
         $this->args = $args;

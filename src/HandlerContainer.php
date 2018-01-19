@@ -68,11 +68,10 @@ class HandlerContainer implements Delegate
      */
     public function startProcessing(Router $router, Request $request, $uri, $args) : Response
     {
-        $params = new ControllerParams($this->controllerClass, $this->controllerMethod, $args, $router->getServiceContainer());
+        $params = new ControllerParams($uri, $this->controllerClass, $this->controllerMethod, $args, $router->getServiceContainer());
         
         $request->attributes->set('controller', $params);
         $request->attributes->set('router', $router);
-        $request->attributes->set('route', $uri);
         return $this->process($request);
     }
     
@@ -102,7 +101,7 @@ class HandlerContainer implements Delegate
 
             // Call controller with request and args
             $router->log("Router: Calling Controller: %s@%s", $params->className, $params->method);
-            $return = (new $params->className($params->container))->{$params->method}($request, ...$params->args);
+            $return = (new $params->className($params->container))->{$params->method}($request, ...array_values($params->args));
             $router->log("Router: Controller Left");
             
             // Instantly return Response objects
