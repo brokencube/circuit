@@ -30,7 +30,7 @@ class Router implements Delegate, LoggerAwareInterface
 {
     use LoggerAwareTrait;
     
-    const CACHE_KEY = 'routes_v2';
+    const CACHE_KEY = 'routes_v3';
     
     /** @var mixed[] Various options as defined by FastRoute */
     protected $options = [];
