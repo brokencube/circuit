@@ -4,12 +4,9 @@ namespace Circuit\Middleware;
 
 use Circuit\Interfaces\Middleware;
 use Circuit\Interfaces\Delegate;
+use Circuit\Router;
 use Circuit\Exception;
-use Circuit\ControllerParams;
-use FastRoute\Dispatcher;
-use Psr\Log\LoggerInterface;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\{Request, Response, JsonResponse};
 
 /**
  * Route Matcher
@@ -67,5 +64,10 @@ class DispatchController implements Middleware
             Response::HTTP_OK,
             array('content-type' => 'text/html')
         );
+    }
+
+    protected function log($message, ...$args)
+    {
+        $this->router->log($message, ...$args);
     }
 }

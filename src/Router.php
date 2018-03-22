@@ -2,17 +2,17 @@
 
 namespace Circuit;
 
+use FastRoute\Dispatcher;
+use Symfony\Component\HttpFoundation\{Request, Response};
+
 use Circuit\Interfaces\Middleware;
-use Circuit\Interfaces\ParameterDereferencer;
 use Circuit\Interfaces\ExceptionHandler;
 use Circuit\Interfaces\Delegate;
 use Circuit\Exception;
 use Circuit\Middleware\RouteMatcher;
-use FastRoute\Dispatcher;
+
 use Psr\SimpleCache\CacheInterface as Psr16;
 use Psr\Cache\CacheItemPoolInterface as Psr6;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -31,7 +31,7 @@ class Router implements Delegate, LoggerAwareInterface
 {
     use LoggerAwareTrait;
     
-    const CACHE_KEY = 'routes_v3';
+    const CACHE_KEY = 'routes_v4';
     
     /** @var mixed[] Various options as defined by FastRoute */
     protected $options = [];
@@ -61,7 +61,7 @@ class Router implements Delegate, LoggerAwareInterface
     protected $namedMiddleware = [];
     
     /** @var array List of middlewares to run before matching routes */
-    protected $prerouteMiddleware = [null];
+    protected $prerouteMiddleware = [];
 
     /** @var array List of middlewares to run before matching routes */
     protected $currentMiddleware = [];
@@ -126,8 +126,8 @@ class Router implements Delegate, LoggerAwareInterface
         $this->stopwatch = microtime(true);
         $starttime = $request->server->get('REQUEST_TIME_FLOAT');
         
-        $this->currentMiddleware = $this->prerouteMiddleware;
-        $this->currentMiddleware[] = new RouteMatcher($this);
+        $this->addMiddleware(...$this->prerouteMiddleware);
+        $this->addMiddleware(new RouteMatcher($this, $this->dispatcher));
         
         $this->log("Router: ->run() called. Starting clock at REQUEST_TIME+%.2fms", microtime(true) - $starttime);
         try {
@@ -144,8 +144,9 @@ class Router implements Delegate, LoggerAwareInterface
     }
     
     /**
-     * Process a route
-     * Will call pre-route middleware, then match route and execute that route (more middleware + controller)
+     * Calls a stack middleware. Within that stack will be a Middleware\RouteMatcher and Middleware\DispatchController
+     * which are responsible for matching a route and dispatching a controller respectively. These middlewares are
+     * automatically injected by Circuit at runtime.
      *
      * @param Request $request Request object for current process
      * @return Response Response to http request ready for dispatch
@@ -153,7 +154,7 @@ class Router implements Delegate, LoggerAwareInterface
     public function process(Request $request) : Response
     {
         // Try and run the next middleware
-        $next = next($this->prerouteMiddleware);
+        $next = array_shift($this->currentMiddleware);
         if ($next instanceof Middleware) {
             $this->log("Router: Calling Middleware: %s", get_class($next));
             $response = $next->process($request, $this);
@@ -261,7 +262,7 @@ class Router implements Delegate, LoggerAwareInterface
      * @param mixed $middleware Middleware object or named middleware (via ->registerMiddleware($name))
      * @return self
      */
-    public function addMiddleware(array $middleware)
+    public function addMiddleware(...$middleware)
     {
         $this->currentMiddleware = array_merge($this->currentMiddleware, $middleware);
         return $this;

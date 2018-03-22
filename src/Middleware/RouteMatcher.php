@@ -4,12 +4,12 @@ namespace Circuit\Middleware;
 
 use Circuit\Interfaces\Middleware;
 use Circuit\Interfaces\Delegate;
+use Circuit\Router;
 use Circuit\Exception;
 use Circuit\ControllerParams;
+
+use Symfony\Component\HttpFoundation\{Request, Response};
 use FastRoute\Dispatcher;
-use Psr\Log\LoggerInterface;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Route Matcher
@@ -25,10 +25,9 @@ class RouteMatcher implements Middleware
      *
      * @param LoggerInterface $log Logger to log error to
      */
-    public function __construct(Router $router, LoggerInterface $log, Dispatcher $dispatcher)
+    public function __construct(Router $router, Dispatcher $dispatcher)
     {
         $this->router = $router;
-        $this->log = $log;
         $this->dispatcher = $dispatcher;
     }
     
@@ -36,8 +35,7 @@ class RouteMatcher implements Middleware
      * Run Middleware for a particular request
      *
      * @param Request  $request    HTTP Foundation Request object
-     * @param Delegate $delegate   Either the Router or HandlerContainer, depending on whether this is run pre or post
-     *                             routing
+     * @param Delegate $delegate   Router
      * @return Response
      */
     public function process(Request $request, Delegate $delegate) : Response
@@ -69,9 +67,14 @@ class RouteMatcher implements Middleware
                 $request->attributes->set('controller', $params);
                 $request->attributes->set('router', $this->router);
                 
-                $router->addMiddleware($dispatcher->middlewareStack);
-                $router->addMiddleware([new DispatchController($this->router)]);
+                $this->router->addMiddleware(...$dispatcher->middlewareStack);
+                $this->router->addMiddleware(new DispatchController($this->router));
                 return $delegate->process($request);
         }
+    }
+    
+    protected function log($message, ...$args)
+    {
+        $this->router->log($message, ...$args);
     }
 }
