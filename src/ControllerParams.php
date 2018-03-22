@@ -1,13 +1,6 @@
 <?php
 namespace Circuit;
 
-use Circuit\Router;
-use Circuit\Interfaces\Middleware;
-use Circuit\Interfaces\Delegate;
-use Circuit\Interfaces\ParameterDereferencer;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Psr\Container\ContainerInterface as Container;
 
 /**
