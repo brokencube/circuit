@@ -15,12 +15,12 @@ $log = new PSR3();     // PSR-3 compatible log - can be null
 
 $router = new \Circuit\Router($options, $cache, $log);
 $router->defineRoutes(function (\Circuit\RouteCollector $r) {
-  $r->get('/', 'controllers\Home');                    // Calls \controllers\Home->index($request);
-  $r->get('/search', 'controllers\Home@search');       // Calls \controllers\Home->search($request);
-  $r->get('/blog/{id}', 'controllers\Blog@index', []); // Calls \controllers\Blog->index($request, $id);
-  $r->addGroup('/group', [], function(Circuit\RouteCollector $r) {
-    $r->get('/route', 'controllers\GroupRoute@index'); 
-  }
+    $r->get('/', 'controllers\Home');                    // Calls \controllers\Home->index($request);
+    $r->get('/search', 'controllers\Home@search');       // Calls \controllers\Home->search($request);
+    $r->get('/blog/{id}', 'controllers\Blog@index', []); // Calls \controllers\Blog->index($request, $id);
+    $r->addGroup('/group', [], function(Circuit\RouteCollector $r) {
+        $r->get('/route', 'controllers\GroupRoute@index'); 
+    }
 }
 
 $router->run($request);  // Dispatch route
@@ -34,10 +34,30 @@ $r->addGroup($prefix, $middlewareArray, function(Circuit\RouteCollector $r) {
    // Group routes
 };
 ```
-`$controllerName` should be in format `namespaced\ControllerClass@method`  (Similar to laravel)
+`$controllerName` should be in format `namespaced\ControllerClass@method`  (Similar to Laravel)
 
+# Controllers
+Controllers must implement the `Circuit\Interfaces\Controller` interface
+```php
+use Circuit\Interfaces\Controller;
+use Psr\Container\ContainerInterface as Container;
 
-# Middleware Example
+class Home implements Controller
+{
+    protected $container;
+    public function __construct(Container $container) 
+    {
+        $this->container = $container;
+    }
+    
+    public function index(Request $request)
+    {
+        return 'Home Page'; // Can also return instances of Response, or an array (will be `json_encode`d);
+    }
+}
+```
+
+# Middleware
 ### `middleware/AddCookie.php`
 ```php
 namespace middleware;
