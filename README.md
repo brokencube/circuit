@@ -82,7 +82,7 @@ $router->defineRoutes(function (\Circuit\RouteCollector $r) {
   }
 }
 ```
-Or add middleware to be run before a route is even matched
+Or add middleware to be run before a route is even matched (this will logically be applied to all routes, as it happens before the matching step. This allows for middleware to modify the route before matching)
 ```php
 $router->registerMiddleware('addcookie', new middleware\AddCookie());
 $router->addPrerouteMiddleware('addcookie');
