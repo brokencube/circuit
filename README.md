@@ -57,6 +57,8 @@ class Home implements Controller
 }
 ```
 
+**Note:** _Currently Circuit only supports the "Service Locator" pattern for DI. In future versions, autowiring will be introduced and the interface requirement above will be relaxed._
+
 # Middleware
 ### `middleware/AddCookie.php`
 ```php
