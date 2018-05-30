@@ -3,8 +3,6 @@
 namespace Circuit;
 
 use Circuit\Interfaces\Middleware;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use FastRoute\RouteParser;
 use FastRoute\DataGenerator;
 

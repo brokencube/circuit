@@ -3,8 +3,8 @@
 namespace Circuit;
 
 use Circuit\Interfaces\{Middleware, Delegate};
-use Circuit\Exception;
-use FastRoute\Dispatcher;
+use Circuit\Middleware\RouteMatcher;
+
 use Psr\SimpleCache\CacheInterface as Psr16;
 use Psr\Cache\CacheItemPoolInterface as Psr6;
 use Symfony\Component\HttpFoundation\{Request, Response};
@@ -40,17 +40,14 @@ class Router implements Delegate, LoggerAwareInterface
     /** @var bool Did we pull results from cache i.e. do we need to call the RouteCollector callback */
     protected $cached = false;
 
-    /** @var ExceptionHandler[] List of exception handlers for particular HTTP codes */
-    public $exceptionHandlers = [];
-    
-    /** @var ExceptionHandler|null Default Exception Handler */
-    public $defaultExceptionHandler = null;
-
     /** @var Middleware[] List of registered middlewares on this router */
     protected $namedMiddleware = [];
     
     /** @var array List of middlewares to run before matching routes */
-    protected $prerouteMiddleware = [null];
+    protected $prerouteMiddleware = [];
+
+    /** @var array List of middlewares to run before matching routes */
+    protected $currentMiddleware = [];
     
     /**
      * Create a new Router
@@ -112,6 +109,9 @@ class Router implements Delegate, LoggerAwareInterface
         $this->stopwatch = microtime(true);
         $starttime = $request->server->get('REQUEST_TIME_FLOAT');
         
+        $this->addMiddleware(...$this->prerouteMiddleware);
+        $this->addMiddleware(new RouteMatcher($this, $this->dispatcher));
+        
         $this->log("Router: ->run() called. Starting clock at REQUEST_TIME+%.2fms", microtime(true) - $starttime);
         try {
             $response = $this->process($request);
@@ -127,52 +127,30 @@ class Router implements Delegate, LoggerAwareInterface
     }
     
     /**
-     * Process a route
-     * Will call pre-route middleware, then match route and execute that route (more middleware + controller)
+     * Calls a stack middleware. Within that stack will be a Middleware\RouteMatcher and Middleware\DispatchController
+     * which are responsible for matching a route and dispatching a controller respectively. These middlewares are
+     * automatically injected by Circuit at runtime.
      *
      * @param Request $request Request object for current process
      * @return Response Response to http request ready for dispatch
      */
     public function process(Request $request) : Response
     {
-        // Try and run the next preroute middleware
-        $next = next($this->prerouteMiddleware);
+        // Try and run the next middleware
+        $next = array_shift($this->currentMiddleware);
+        
         if ($next instanceof Middleware) {
-            $this->log("Router: Calling Middleware: %s", get_class($next));
-            $response = $next->process($request, $this);
-            $this->log("Router: Leaving Middleware: %s", get_class($next));
-            return $response;
+            $name = get_class($next);
+            $middleware = $next;
         } elseif (is_string($next)) {
-            $this->log("Router: Calling Middleware: %s", $next);
-            $response = $this->getMiddleware($next)->process($request, $this);
-            $this->log("Router: Leaving Middleware: %s", $next);
-            return $response;
-        } else {
-            // Match the route
-            list($uri) = explode('?', str_replace(chr(0), '', $request->server->get('REQUEST_URI'))); // Null byte poisoning protection
-            $dispatch = $this->dispatcher->dispatch($request->server->get('REQUEST_METHOD'), $uri);
-            switch ($dispatch[0]) {
-                case Dispatcher::NOT_FOUND:
-                    $this->log("Router: Route not matched");
-                    throw new Exception\NotFound('Router: Route not matched');
-                
-                case Dispatcher::METHOD_NOT_ALLOWED:
-                    $this->log("Router: Method not Allowed");
-                    throw new Exception\MethodNotAllowed(
-                        $dispatch[1],
-                        'Router: Method not Allowed: ' . $request->getMethod()
-                    );
-                
-                case Dispatcher::FOUND:
-                    $dispatcher = unserialize($dispatch[1]);
-                    $this->log(
-                        "Router: Route matched: %s@%s",
-                        $dispatcher->controllerClass,
-                        $dispatcher->controllerMethod
-                    );
-                    return $dispatcher->startProcessing($this, $request, $uri, $dispatch[2]);
-            }
+            $name = $next;
+            $middleware = $this->getMiddleware($next);
         }
+        
+        $this->log("Router: Calling Middleware: %s", $name);
+        $response = $middleware->process($request, $this);
+        $this->log("Router: Leaving Middleware: %s", $name);
+        return $response;
     }
     
     /**
@@ -216,6 +194,18 @@ class Router implements Delegate, LoggerAwareInterface
         return $this;
     }
 
+    /**
+     * Add middleware that will be run after routes are matched
+     *
+     * @param mixed $middleware Middleware object or named middleware (via ->registerMiddleware($name))
+     * @return self
+     */
+    public function addMiddleware(...$middleware)
+    {
+        $this->currentMiddleware = array_merge($this->currentMiddleware, $middleware);
+        return $this;
+    }
+    
     /**
      * Log a debug message, and append time elapsed since ->run() was called
      *
