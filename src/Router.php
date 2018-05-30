@@ -2,20 +2,13 @@
 
 namespace Circuit;
 
-use Circuit\Interfaces\Middleware;
-use Circuit\Interfaces\ParameterDereferencer;
-use Circuit\Interfaces\ExceptionHandler;
-use Circuit\Interfaces\Delegate;
+use Circuit\Interfaces\{Middleware, Delegate};
 use Circuit\Exception;
 use FastRoute\Dispatcher;
 use Psr\SimpleCache\CacheInterface as Psr16;
 use Psr\Cache\CacheItemPoolInterface as Psr6;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
-use Psr\Log\LoggerInterface;
-use Psr\Log\LoggerAwareInterface;
-use Psr\Log\LoggerAwareTrait;
-use Psr\Container\ContainerInterface as Container;
+use Symfony\Component\HttpFoundation\{Request, Response};
+use Psr\Log\{LoggerInterface, LoggerAwareInterface, LoggerAwareTrait};
 
 /**
  * Circuit - FastRoute + Middleware
@@ -30,7 +23,7 @@ class Router implements Delegate, LoggerAwareInterface
 {
     use LoggerAwareTrait;
     
-    const CACHE_KEY = 'routes_v3';
+    const CACHE_KEY = 'routes_v4';
     
     /** @var mixed[] Various options as defined by FastRoute */
     protected $options = [];
@@ -52,9 +45,6 @@ class Router implements Delegate, LoggerAwareInterface
     
     /** @var ExceptionHandler|null Default Exception Handler */
     public $defaultExceptionHandler = null;
-
-    /** @var mixed[] List of arguments passed to Controller constructor */
-    protected $controllerArgs = [];
 
     /** @var Middleware[] List of registered middlewares on this router */
     protected $namedMiddleware = [];
@@ -127,7 +117,7 @@ class Router implements Delegate, LoggerAwareInterface
             $response = $this->process($request);
         } catch (\Throwable $e) {
             $this->log("Router: Exception");
-            $response = $this->handleException($e, $request);
+            throw $e;
         }
         
         $this->log("Router: Preparing to send response");
@@ -145,7 +135,7 @@ class Router implements Delegate, LoggerAwareInterface
      */
     public function process(Request $request) : Response
     {
-        // Try and run the next middleware
+        // Try and run the next preroute middleware
         $next = next($this->prerouteMiddleware);
         if ($next instanceof Middleware) {
             $this->log("Router: Calling Middleware: %s", get_class($next));
@@ -158,8 +148,8 @@ class Router implements Delegate, LoggerAwareInterface
             $this->log("Router: Leaving Middleware: %s", $next);
             return $response;
         } else {
-            // Null byte poisoning protection
-            list($uri) = explode('?', str_replace(chr(0), '', $request->server->get('REQUEST_URI')));
+            // Match the route
+            list($uri) = explode('?', str_replace(chr(0), '', $request->server->get('REQUEST_URI'))); // Null byte poisoning protection
             $dispatch = $this->dispatcher->dispatch($request->server->get('REQUEST_METHOD'), $uri);
             switch ($dispatch[0]) {
                 case Dispatcher::NOT_FOUND:
@@ -185,53 +175,6 @@ class Router implements Delegate, LoggerAwareInterface
         }
     }
     
-    /**
-     * Handle an exception during processing of route.
-     *
-     * @param Throwable $e The Exception / Error thrown.
-     * @param Request $request The request that caused the exception.
-     * @return Response The response to the exception (e.g. error page)
-     */
-    protected function handleException(\Throwable $e, Request $request) : Response
-    {
-        // Wrap non HTTP exception/errors
-        if (!$e instanceof Exception\Exception) {
-            $e = new Exception\UncaughtException($e);
-        }
-        
-        // Throw to an appropriate handler
-        $code = $e->getStatusCode();
-        if ($this->exceptionHandlers[$code] instanceof ExceptionHandler) {
-            return $this->exceptionHandlers[$code]->handle($e, $request);
-        } elseif ($this->defaultExceptionHandler instanceof ExceptionHandler) {
-            return $this->defaultExceptionHandler->handle($e, $request);
-        } else {
-            return (new \Circuit\ExceptionHandler\DefaultHandler)->handle($e, $request);
-        }
-    }
-    
-    /**
-     * Set arguments that will be passed to the constructor for any controllers invoked
-     *
-     * @param Psr\Container\ContainerInterface $container Service container passed to controller constructor
-     * @return self
-     */
-    public function setServiceContainer(Container $container)
-    {
-        $this->container = $container;
-        return $this;
-    }
-
-    /**
-     * Get arguments that will be passed to the constructor for any controllers invoked
-     *
-     * @return Psr\Container\ContainerInterface Service container passed to controller constructor
-     */
-    public function getServiceContainer()
-    {
-        return $this->container;
-    }
-
     /**
      * Register a middleware against a name.
      * This allows middleware to be created on startup and then refered to in serialised/cached route table
@@ -273,32 +216,6 @@ class Router implements Delegate, LoggerAwareInterface
         return $this;
     }
 
-    /**
-     * Register an exception handler for a particular HTTP code.
-     *
-     * @param string $code HTTP code handler is responsible for
-     * @param ExceptionHandler $hander Handler
-     * @return self
-     */
-    public function setExceptionHandler($code, ExceptionHandler $handler)
-    {
-        $this->exceptionHandlers[$code] = $handler;
-        return $this;
-    }
-
-    /**
-     * Register an exception handler for a particular HTTP code.
-     *
-     * @param string $code HTTP code handler is responsible for
-     * @param ExceptionHandler $hander Handler
-     * @return self
-     */
-    public function setDefaultExceptionHandler(ExceptionHandler $handler)
-    {
-        $this->defaultExceptionHandler = $handler;
-        return $this;
-    }
-    
     /**
      * Log a debug message, and append time elapsed since ->run() was called
      *

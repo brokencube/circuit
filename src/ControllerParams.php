@@ -1,15 +1,6 @@
 <?php
 namespace Circuit;
 
-use Circuit\Router;
-use Circuit\Interfaces\Middleware;
-use Circuit\Interfaces\Delegate;
-use Circuit\Interfaces\ParameterDereferencer;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\JsonResponse;
-use Psr\Container\ContainerInterface as Container;
-
 /**
  * A container representing a target Controller
  * It holds the name, method, arguments and constructor arguments needed to construct and call a controller method
@@ -29,16 +20,16 @@ class ControllerParams
     
     /** @var array Arguments to pass to the controller method */
     public $args;
+
+    /** @var array Arguments to pass to the controller __construct method */
+    public $constructorArgs;
     
-    /** @var Psr\Container\ContainerInterface Container to pass to constructor */
-    public $container;
-    
-    public function __construct($route, $class, $method, $args, Container $container)
+    public function __construct($route, $class, $method, array $args, array $constructorArgs = [])
     {
         $this->route = $route;
         $this->className = $class;
         $this->method = $method;
         $this->args = $args;
-        $this->container = $container;
+        $this->constructorArgs = $constructorArgs;
     }
 }

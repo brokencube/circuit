@@ -1,13 +1,9 @@
 <?php
 namespace Circuit;
 
+use Symfony\Component\HttpFoundation\{Request, Response, JsonResponse};
 use Circuit\Router;
-use Circuit\Interfaces\Middleware;
-use Circuit\Interfaces\Delegate;
-use Circuit\Interfaces\ParameterDereferencer;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\JsonResponse;
+use Circuit\Interfaces\{Middleware, Delegate};
 
 /**
  * A container representing a route target (i.e. Controller) and a list of middleware for that route
@@ -66,9 +62,9 @@ class HandlerContainer implements Delegate
      * @param array $args      The matched arguments from the route
      * @return Response
      */
-    public function startProcessing(Router $router, Request $request, $uri, $args) : Response
+    public function startProcessing(Router $router, Request $request, $uri, array $args) : Response
     {
-        $params = new ControllerParams($uri, $this->controllerClass, $this->controllerMethod, $args, $router->getServiceContainer());
+        $params = new ControllerParams($uri, $this->controllerClass, $this->controllerMethod, $args);
         
         $request->attributes->set('controller', $params);
         $request->attributes->set('router', $router);
@@ -101,7 +97,7 @@ class HandlerContainer implements Delegate
 
             // Call controller with request and args
             $router->log("Router: Calling Controller: %s@%s", $params->className, $params->method);
-            $return = (new $params->className($params->container))->{$params->method}($request, ...array_values($params->args));
+            $return = (new $params->className(...$params->constructorArgs))->{$params->method}($request, ...array_values($params->args));
             $router->log("Router: Controller Left");
             
             // Instantly return Response objects
