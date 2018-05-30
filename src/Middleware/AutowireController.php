@@ -4,6 +4,7 @@ namespace Circuit\Middleware;
 
 use Circuit\Interfaces\Middleware;
 use Circuit\Interfaces\Delegate;
+use Psr\Container\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
