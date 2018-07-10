@@ -9,11 +9,9 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Parameter Matcher
+ * Autowire Controller
  *
- * A middleware that reorders controller method parameters so that named parameters in the method signature
- * match to named parameters in the router definition. Any unmatched parameters will be called in their original
- * order
+ * A middleware that automatically passes parameters to a Controller's __construct method based on variable name.
  *
  * @author Nik Barham <nik@brokencube.co.uk>
  */
